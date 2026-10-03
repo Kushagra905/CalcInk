@@ -27,12 +27,22 @@ self.onmessage = ({ data }: MessageEvent<MockRequest>) => {
       });
       return;
     }
-    reply({
-      type: "PROGRESS",
-      progress: 1,
-      message: "Development fixture loaded; no model download",
-    });
-    reply({ type: "READY", modelId: MODEL_ID });
+    const finish = () => {
+      reply({
+        type: "PROGRESS",
+        progress: 1,
+        message: "Development fixture loaded; no model download",
+      });
+      reply({ type: "READY", modelId: MODEL_ID });
+    };
+    if (data.fixture?.behavior === "slow-init") {
+      reply({
+        type: "PROGRESS",
+        progress: 0.25,
+        message: "Simulating slow initialization; no model download.",
+      });
+      setTimeout(finish, 3000);
+    } else finish();
     return;
   }
   const request = {

@@ -11,6 +11,10 @@ export default defineConfig(({ command, mode }) => {
   return {
     plugins: [react()],
     base: "./",
+    worker: { format: "es" },
+    optimizeDeps: {
+      exclude: ["ink-on", "onnxruntime-web", "@huggingface/transformers"],
+    },
     resolve: {
       alias: {
         "#recognition": fileURLToPath(

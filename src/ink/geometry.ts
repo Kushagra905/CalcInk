@@ -24,12 +24,41 @@ export function strokeBounds(
   let right = left;
   let top = points[0].y;
   let bottom = top;
-  for (const point of points) {
+  function include(point: Pick<Point, "x" | "y">) {
     left = Math.min(left, point.x);
     right = Math.max(right, point.x);
     top = Math.min(top, point.y);
     bottom = Math.max(bottom, point.y);
   }
+  let start = points[0];
+  for (let index = 1; index < points.length - 1; index++) {
+    const control = points[index];
+    const next = points[index + 1];
+    const end = {
+      ...control,
+      x: (control.x + next.x) / 2,
+      y: (control.y + next.y) / 2,
+    };
+    include(end);
+    for (const axis of ["x", "y"] as const) {
+      const denominator = start[axis] - 2 * control[axis] + end[axis];
+      const t =
+        denominator === 0 ? -1 : (start[axis] - control[axis]) / denominator;
+      if (t > 0 && t < 1)
+        include({
+          x:
+            (1 - t) ** 2 * start.x +
+            2 * (1 - t) * t * control.x +
+            t ** 2 * end.x,
+          y:
+            (1 - t) ** 2 * start.y +
+            2 * (1 - t) * t * control.y +
+            t ** 2 * end.y,
+        });
+    }
+    start = end;
+  }
+  include(points[points.length - 1]);
   const row = getRowConfig(rowId);
   left = Math.max(0, left - width / 2);
   right = Math.min(PAGE.width, right + width / 2);

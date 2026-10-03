@@ -9,7 +9,12 @@ import type {
 } from "../recognition/contracts";
 
 export const MOCK_MODEL_ID = "CALCINK_DEVELOPMENT_MOCK";
-export type MockBehavior = "normal" | "error" | "init-error" | "out-of-order";
+export type MockBehavior =
+  | "normal"
+  | "error"
+  | "init-error"
+  | "out-of-order"
+  | "slow-init";
 type WorkerPort = Pick<
   Worker,
   "postMessage" | "terminate" | "onmessage" | "onerror"

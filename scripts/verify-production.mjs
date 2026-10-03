@@ -23,7 +23,7 @@ for (const file of files) {
   assert.doesNotMatch(file.name, /mock\.worker/);
   assert.doesNotMatch(
     readFileSync(join(file.parentPath, file.name), "utf8"),
-    /CALCINK_DEVELOPMENT_MOCK|Fixture capture|Synthetic 18\+4/,
+    /CALCINK_DEVELOPMENT_MOCK|Fixture capture|Synthetic 18\+4|Phase 1 handwriting collection|calcink-handwriting-v[12]/,
     `Mock content leaked into ${file.name}`,
   );
 }

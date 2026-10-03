@@ -35,10 +35,12 @@ try { fixtures = [...parseFixtures(JSON.parse(localStorage.getItem(storageKey) ?
 catch { element("capture-status").textContent = "Stored samples could not be read. Import a previous export if available."; }
 
 function syncControls(): void {
-  element<HTMLButtonElement>("load").disabled = loading.kind === "loading" || busy;
+  const heldOut = split.value === "held-out";
+  element<HTMLButtonElement>("load").disabled = heldOut || loading.kind === "loading" || busy;
   model.disabled = loading.kind === "loading" || busy;
-  element<HTMLButtonElement>("recognize").disabled = loading.kind !== "ready" || busy || !!active || !operations.length;
-  element<HTMLButtonElement>("benchmark").disabled = loading.kind !== "ready" || busy || !!active;
+  element<HTMLButtonElement>("recognize").disabled = heldOut || loading.kind !== "ready" || busy || !!active || !operations.length;
+  element<HTMLButtonElement>("benchmark").disabled = heldOut || loading.kind !== "ready" || busy || !!active;
+  writer.disabled = split.disabled = sample.disabled = busy;
 }
 const client = new TrialClient((state) => {
   loading = state;
@@ -84,7 +86,9 @@ function populateSamples(): void {
   for (const item of sampleCases.filter((item) => item.writer === writer.value && item.split === split.value)) sample.add(new Option(`${item.id} · ${item.expected}`, item.id));
   restoreSample();
 }
-writer.onchange = populateSamples; split.onchange = populateSamples; sample.onchange = restoreSample;
+writer.onchange = populateSamples;
+split.onchange = () => { client.unload(); populateSamples(); };
+sample.onchange = restoreSample;
 function counts(): void {
   const dev = fixtures.filter((item) => item.sampleId.startsWith("dev-")).length;
   element("counts").textContent = `Saved: ${dev}/24 development · ${fixtures.length - dev}/50 held out. Export samples before clearing browser storage.`;
@@ -141,24 +145,25 @@ element("save").onclick = () => {
     element("capture-status").textContent = `Saved ${sample.value}.`; counts();
   } catch (error) { element("capture-status").textContent = String(error); }
 };
-element("load").onclick = async () => { try { await client.load(getCandidate(model.value), baseUrl); } catch { /* loading state contains actionable error */ } };
+element("load").onclick = async () => { if (split.value === "held-out") return; try { await client.load(getCandidate(model.value), baseUrl); } catch { /* loading state contains actionable error */ } };
 element("unload").onclick = () => client.unload();
 
 async function infer(ink: readonly InkOperation[], rowRevision: number): Promise<RecognitionResponse> {
   return client.recognize({ epoch: 0, rowId: "row-1", rowRevision, operations: ink });
 }
 element("recognize").onclick = async () => {
+  if (split.value === "held-out" || active || busy) return;
   const capturedRevision = revision;
   busy = true; syncControls();
   try {
     const result = await infer(structuredClone(operations), capturedRevision);
-    if (revision === capturedRevision) element("result").textContent = JSON.stringify({ transcript: result.transcript, timing: result.timing, visibleInkBounds: result.visibleInkBounds, note: "Recognition only; arithmetic evaluation is Phase 2." }, null, 2);
+    if (revision === capturedRevision) element("result").textContent = JSON.stringify({ transcript: result.transcript, outcome: result.outcome, timing: result.timing, visibleInkBounds: result.visibleInkBounds }, null, 2);
   } catch (error) { if (revision === capturedRevision) element("result").textContent = String(error); }
   finally { busy = false; syncControls(); }
 };
 
 element("benchmark").onclick = async () => {
-  if (active) return;
+  if (active || busy || split.value === "held-out") return;
   busy = true; syncControls(); report = null; element<HTMLButtonElement>("export-report").disabled = true;
   const candidate = getCandidate(model.value);
   const cases = sampleCases.filter((item) => item.split === "development");
@@ -175,7 +180,7 @@ element("benchmark").onclick = async () => {
       try {
         const result = await infer(saved.find((fixture) => fixture.sampleId === item.id)!.operations, index + 1);
         if (result.outcome.kind === "unrecognized" && result.outcome.code === "OUTPUT_LIMIT") throw new Error("OUTPUT_LIMIT");
-        entries.push({ sampleId: item.id, expected: item.expected, transcript: result.transcript, latencyMs: result.timing.preprocessMs + result.timing.inferenceMs });
+        entries.push({ sampleId: item.id, expected: item.expected, transcript: result.transcript, latencyMs: result.timing.preprocessMs + result.timing.inferenceMs + result.timing.evaluateMs });
       } catch (error) { entries.push({ sampleId: item.id, expected: item.expected, transcript: "", latencyMs: performance.now() - start, error: String(error) }); }
     }
     report = { schemaVersion: 1, recordedAt: new Date().toISOString(), modelId: candidate.modelId, revision: candidate.revision, preprocessing: candidate.adapter === "ink-on" ? "shared quadratic replay; alpha crop; CoMER height 256; number mode; beam 3" : "shared quadratic replay; alpha crop on white; TrOCR processor; INT8 encoder and decoder", userAgent: navigator.userAgent, hardwareConcurrency: navigator.hardwareConcurrency, split: "development", summary: summarizeBenchmark(entries), samples: saved.filter((item) => cases.some((test) => test.id === item.sampleId)), entries };
@@ -190,7 +195,7 @@ function download(name: string, content: unknown): void {
   const link = document.createElement("a"); link.href = url; link.download = name; link.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
-element("export-samples").onclick = () => download("calcink-handwriting-samples.json", { schemaVersion: 1, samples: fixtures });
+element("export-samples").onclick = () => download(`calcink-${split.value}.json`, { schemaVersion: 1, samples: fixtures.filter((item) => sampleCases.some((entry) => entry.id === item.sampleId && entry.split === split.value)) });
 element("export-report").onclick = () => { if (report) download(`calcink-${model.value}-development-report.json`, report); };
 element<HTMLInputElement>("import-samples").onchange = async (event) => {
   try {

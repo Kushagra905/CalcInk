@@ -46,6 +46,7 @@ test("fixture passes through the real module worker; layers scale and export is 
   for await (const chunk of stream) chunks.push(Buffer.from(chunk));
   const fixture = JSON.parse(Buffer.concat(chunks).toString());
   expect(fixture).toMatchObject({
+    dataset: "contract",
     sampleType: "synthetic",
     writer: "Writer A",
     expectedTranscript: "18+4×3=",

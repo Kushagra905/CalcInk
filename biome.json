@@ -1,0 +1,15 @@
+{
+  "files": {
+    "includes": [
+      "src/**",
+      "tests/**",
+      "scripts/**",
+      "*.json",
+      "*.ts",
+      "!package-lock.json"
+    ]
+  },
+  "formatter": { "indentStyle": "space", "indentWidth": 2 },
+  "linter": { "rules": { "preset": "recommended" } },
+  "assist": { "actions": { "source": { "organizeImports": "on" } } }
+}

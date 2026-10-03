@@ -1,18 +1,27 @@
 import { useState } from "react";
 import { PAGE, ROWS } from "../document/rows";
 import type { DocumentStore } from "../document/store";
+import { CapturePanel } from "./CapturePanel";
+import { downloadJson } from "./capture";
 import { createFixture } from "./fixture";
 
-export function FixturePanel({ document }: { document: DocumentStore }) {
+export function FixturePanel({
+  document,
+  onHeldOutChange,
+  onPromptChange,
+}: {
+  document: DocumentStore;
+  onHeldOutChange(heldOut: boolean): void;
+  onPromptChange(message: string): void;
+}) {
   const [rowId, setRowId] = useState("row-1");
   const [writer, setWriter] = useState("");
   const [transcript, setTranscript] = useState("");
   const [value, setValue] = useState("");
-  const [dataset, setDataset] = useState("development");
   const [message, setMessage] = useState("");
 
   function load() {
-    document.clear();
+    document.reset();
     document.begin("row-1");
     document.commit(createFixture());
     setMessage(
@@ -42,7 +51,7 @@ export function FixturePanel({ document }: { document: DocumentStore }) {
           : synthetic
             ? "mixed"
             : "handwritten",
-      dataset,
+      dataset: "contract",
       writer: writer.trim(),
       expectedTranscript: transcript.trim(),
       expectedValue: value.trim() || null,
@@ -52,18 +61,9 @@ export function FixturePanel({ document }: { document: DocumentStore }) {
       device: { userAgent: navigator.userAgent, dpr: devicePixelRatio },
       capturedAt: new Date().toISOString(),
     };
-    const url = URL.createObjectURL(
-      new Blob([JSON.stringify(fixture, null, 2)], {
-        type: "application/json",
-      }),
-    );
-    const link = window.document.createElement("a");
-    link.href = url;
-    link.download = `calcink-${dataset}-${rowId}-${Date.now()}.json`;
-    link.click();
-    setTimeout(() => URL.revokeObjectURL(url), 0);
+    downloadJson(`calcink-contract-${rowId}-${Date.now()}.json`, fixture);
     setMessage(
-      `Exported ${fixture.sampleType} fixture. Keep held-out samples separate from development data.`,
+      `Exported ${fixture.sampleType} contract fixture. Use guided collection for handwriting evidence.`,
     );
   }
 
@@ -82,7 +82,7 @@ export function FixturePanel({ document }: { document: DocumentStore }) {
             type="button"
             className="button"
             onClick={() => {
-              document.clear();
+              document.reset();
               setMessage("Fixtures reset.");
             }}
           >
@@ -91,10 +91,11 @@ export function FixturePanel({ document }: { document: DocumentStore }) {
         </div>
       </div>
       <p className="fixture-help">
-        Draw your sample above, enter its expected text, and export the stroke
-        data. Reset removes all captured ink from this tab.
+        One-off contract fixtures are exported here. Use the guided Phase 1
+        collection below for actual handwriting evidence. Reset removes unsaved
+        canvas ink; saved handwriting samples are kept.
       </p>
-      <div className="fixture-fields">
+      <div className="fixture-fields contract-fields">
         <label>
           Row
           <select
@@ -132,16 +133,6 @@ export function FixturePanel({ document }: { document: DocumentStore }) {
             placeholder="30 (optional)"
           />
         </label>
-        <label>
-          Dataset
-          <select
-            value={dataset}
-            onChange={(event) => setDataset(event.target.value)}
-          >
-            <option value="development">Development</option>
-            <option value="held-out">Held out</option>
-          </select>
-        </label>
       </div>
       <button type="button" className="button primary" onClick={download}>
         Export fixture JSON
@@ -149,6 +140,11 @@ export function FixturePanel({ document }: { document: DocumentStore }) {
       <p role="status" className="fixture-status">
         {message}
       </p>
+      <CapturePanel
+        document={document}
+        onHeldOutChange={onHeldOutChange}
+        onPromptChange={onPromptChange}
+      />
     </section>
   );
 }

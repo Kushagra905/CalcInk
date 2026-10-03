@@ -3,7 +3,8 @@ import { getRowConfig, PAGE, ROWS } from "../document/rows";
 import type { DocumentStore } from "../document/store";
 import type { Point } from "../document/types";
 import { clientToPage, strokeBounds } from "../ink/geometry";
-import { drawPath, replayRow } from "../rendering/replay";
+import { drawPath } from "../ink/replay";
+import { replayRow } from "../rendering/replay";
 
 export interface RowFeedback {
   kind: "idle" | "recognizing" | "ready" | "error";
@@ -38,6 +39,14 @@ export function Notebook({
     }
     const usableContexts = contexts;
     const [committed, preview] = usableContexts;
+    // Cache only the stable part of the active curve; repaint its changing tail each frame.
+    const stable = window.document.createElement("canvas");
+    const scratchContext = stable.getContext("2d");
+    if (!scratchContext) {
+      onError("Canvas 2D is unavailable in this browser.");
+      return;
+    }
+    const stableContext = scratchContext;
     let gesture: {
       pointerId: number;
       rowId: string;
@@ -47,17 +56,19 @@ export function Notebook({
     } | null = null;
     let frame = 0;
 
-    function repaint() {
-      // ponytail: full replay on commits for the three-row prototype; repaint changed rows in Phase 2.
-      committed.clearRect(0, 0, PAGE.width, PAGE.height);
-      for (const row of document.getRows())
-        replayRow(committed, row.rowId, row.operations);
+    function repaint(rowIds: readonly string[] = ROWS.map((row) => row.id)) {
+      for (const rowId of rowIds) {
+        const row = getRowConfig(rowId);
+        committed.clearRect(0, row.top, PAGE.width, row.height);
+        replayRow(committed, rowId, document.getRow(rowId).operations);
+      }
     }
 
     function stopPreview() {
       cancelAnimationFrame(frame);
       frame = 0;
       preview.clearRect(0, 0, PAGE.width, PAGE.height);
+      stableContext.clearRect(0, 0, PAGE.width, PAGE.height);
     }
 
     function cancel() {
@@ -86,6 +97,16 @@ export function Notebook({
           0,
         );
       }
+      stable.width = input.width;
+      stable.height = input.height;
+      stableContext.setTransform(
+        stable.width / PAGE.width,
+        0,
+        0,
+        stable.height / PAGE.height,
+        0,
+        0,
+      );
       repaint();
     }
 
@@ -108,17 +129,25 @@ export function Notebook({
       frame = 0;
       if (!gesture) return;
       const row = getRowConfig(gesture.rowId);
+      stableContext.fillStyle = stableContext.strokeStyle = "#111827";
+      if (gesture.painted < gesture.points.length - 1) {
+        drawPath(
+          stableContext,
+          gesture.points,
+          gesture.width,
+          gesture.painted,
+          false,
+        );
+        gesture.painted = Math.max(1, gesture.points.length - 1);
+      }
+      preview.clearRect(0, row.top, PAGE.width, row.height);
       preview.save();
       preview.beginPath();
       preview.rect(0, row.top, PAGE.width, row.writingHeight);
       preview.clip();
-      preview.fillStyle = preview.strokeStyle = "#273832";
-      drawPath(
-        preview,
-        gesture.points.slice(Math.max(0, gesture.painted - 1)),
-        gesture.width,
-      );
-      gesture.painted = gesture.points.length;
+      preview.drawImage(stable, 0, 0, PAGE.width, PAGE.height);
+      preview.fillStyle = preview.strokeStyle = "#111827";
+      drawPath(preview, gesture.points, gesture.width, gesture.painted);
       preview.restore();
     }
 
@@ -143,7 +172,7 @@ export function Notebook({
           rowId: row.id,
           width: selectedWidth.current,
           points: [point(event, row.id)],
-          painted: 0,
+          painted: 1,
         };
         input.setPointerCapture(event.pointerId);
         frame = requestAnimationFrame(paintLive);
@@ -212,10 +241,22 @@ export function Notebook({
       if (gesture?.pointerId === event.pointerId) cancel();
     }
     const unsubscribe = document.subscribe((event) => {
-      if (event.phase !== "begin") repaint();
+      if (event.phase === "cancel" || event.reason === "clear") cancel();
+      if (event.phase !== "begin") repaint(event.rows.map((row) => row.rowId));
     });
     const observer = new ResizeObserver(resize);
     observer.observe(input);
+    let dprQuery: MediaQueryList;
+    function watchDpr() {
+      dprQuery?.removeEventListener("change", dprChanged);
+      dprQuery = matchMedia(`(resolution: ${devicePixelRatio}dppx)`);
+      dprQuery.addEventListener("change", dprChanged);
+    }
+    function dprChanged() {
+      resize();
+      watchDpr();
+    }
+    watchDpr();
     window.addEventListener("resize", resize);
     input.addEventListener("pointerdown", down);
     input.addEventListener("pointermove", sample);
@@ -227,6 +268,7 @@ export function Notebook({
       cancel();
       unsubscribe();
       observer.disconnect();
+      dprQuery.removeEventListener("change", dprChanged);
       window.removeEventListener("resize", resize);
       input.removeEventListener("pointerdown", down);
       input.removeEventListener("pointermove", sample);
@@ -237,7 +279,7 @@ export function Notebook({
   }, [document, onError]);
 
   return (
-    <div className="notebook">
+    <div className="notebook" id="handwriting-notebook">
       <div className="paper">
         <div className="margin-line" />
         {ROWS.map((row, index) => (

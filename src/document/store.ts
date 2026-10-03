@@ -80,6 +80,22 @@ export function createDocumentStore() {
     rowId: string;
     reason: "draw" | "erase-stroke" | "erase-pixel";
   } | null = null;
+  const past: HistoryCommand[] = [];
+  const future: HistoryCommand[] = [];
+
+  function remember(command: HistoryCommand) {
+    if (!command.changes.length) return;
+    past.push(
+      Object.freeze({
+        ...command,
+        changes: Object.freeze(
+          command.changes.map((change) => Object.freeze(change)),
+        ),
+      }),
+    );
+    if (past.length > 100) past.shift();
+    future.length = 0;
+  }
 
   function getRow(rowId: string) {
     const row = rows.get(rowId);
@@ -116,6 +132,12 @@ export function createDocumentStore() {
     getEpoch: () => epoch,
     getRow,
     getRows: () => Object.freeze(ROWS.map((row) => getRow(row.id))),
+    getHistoryState: () => ({
+      canUndo: past.length > 0,
+      canRedo: future.length > 0,
+      canClear:
+        !!gesture || ROWS.some((row) => getRow(row.id).operations.length > 0),
+    }),
     subscribe(listener: (event: DocumentEditEvent) => void) {
       listeners.add(listener);
       return () => {
@@ -161,6 +183,12 @@ export function createDocumentStore() {
       );
       if (all.length > 1000 || pointCount > 200000)
         throw new RangeError("Page capacity reached");
+      const before = getRow(rowId).operations;
+      if (
+        before.length !== frozen.length ||
+        frozen.some((operation, index) => operation !== before[index])
+      )
+        remember({ kind: reason, changes: [{ rowId, before, after: frozen }] });
       advance(rowId, frozen);
       gesture = null;
       emit("commit", reason, [rowId]);
@@ -171,15 +199,60 @@ export function createDocumentStore() {
       gesture = null;
       emit("cancel", reason, [rowId]);
     },
-    // Phase 0 fixture reset. User-facing undoable clear belongs to Phase 2 history.
     clear() {
       this.cancel();
       epoch += 1;
       const changed = ROWS.filter(
         (row) => getRow(row.id).operations.length,
       ).map((row) => row.id);
+      remember({
+        kind: "clear",
+        changes: changed.map((rowId) => ({
+          rowId,
+          before: getRow(rowId).operations,
+          after: EMPTY,
+        })),
+      });
       for (const rowId of changed) advance(rowId, EMPTY);
       emit("commit", "clear" satisfies HistoryCommand["kind"], changed);
+    },
+    undo() {
+      this.cancel();
+      const command = past.pop();
+      if (!command) return;
+      for (const change of command.changes)
+        advance(change.rowId, change.before);
+      future.push(command);
+      emit(
+        "commit",
+        "undo",
+        command.changes.map((change) => change.rowId),
+      );
+    },
+    redo() {
+      this.cancel();
+      const command = future.pop();
+      if (!command) return;
+      for (const change of command.changes) advance(change.rowId, change.after);
+      past.push(command);
+      emit(
+        "commit",
+        "redo",
+        command.changes.map((change) => change.rowId),
+      );
+    },
+    // Development collection boundary: old prompts/held-out ink must not return through Undo.
+    reset(rowId?: string) {
+      if (rowId) getRow(rowId);
+      this.cancel();
+      past.length = future.length = 0;
+      if (!rowId) epoch += 1;
+      const changed = ROWS.filter(
+        (row) =>
+          (!rowId || row.id === rowId) && getRow(row.id).operations.length,
+      ).map((row) => row.id);
+      for (const id of changed) advance(id, EMPTY);
+      emit("commit", "clear", changed);
     },
   };
 }

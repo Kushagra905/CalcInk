@@ -1,4 +1,6 @@
 /// <reference lib="webworker" />
+
+import { evaluateTranscript } from "../math/evaluate";
 import type { RecognitionAdapter } from "./adapter";
 import { assertTrialAllowed, getCandidate } from "./candidates";
 import type {
@@ -51,9 +53,20 @@ async function handle(message: MainToWorkerMessage): Promise<void> {
     const { epoch, rowId, rowRevision, requestId } = message.request;
     key = { epoch, rowId, rowRevision, requestId };
     if (!adapter) throw new Error("ADAPTER_NOT_READY");
+    const response = await adapter.recognize(message.request);
+    const start = performance.now();
+    const calculated =
+      response.outcome.kind === "unrecognized" &&
+      response.outcome.code === "EVALUATION_ONLY"
+        ? evaluateTranscript(response.transcript)
+        : { transcript: response.transcript, outcome: response.outcome };
     send({
       type: "RESULT",
-      response: await adapter.recognize(message.request),
+      response: {
+        ...response,
+        ...calculated,
+        timing: { ...response.timing, evaluateMs: performance.now() - start },
+      },
     });
   } catch (error) {
     send({

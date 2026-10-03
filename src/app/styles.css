@@ -1,0 +1,390 @@
+:root {
+  font-family:
+    system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: #273832;
+  background: #f5f3ed;
+  font-synthesis: none;
+  line-height: 1.5;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+}
+button,
+input,
+select {
+  font: inherit;
+}
+button,
+input,
+select,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+button {
+  cursor: pointer;
+}
+button:disabled {
+  cursor: default;
+  opacity: 0.4;
+}
+:focus-visible {
+  outline: 3px solid #2f7760;
+  outline-offset: 3px;
+}
+.workspace {
+  max-width: 1080px;
+  padding: 28px 48px 48px;
+  margin: auto;
+}
+.app-header,
+.notebook-tools,
+.tool-group,
+.page-footer,
+.fixture-heading,
+.fixture-actions {
+  display: flex;
+  align-items: center;
+}
+.app-header,
+.page-footer,
+.fixture-heading {
+  justify-content: space-between;
+  gap: 16px;
+}
+.wordmark {
+  font-family: Georgia, serif;
+  font-size: 31px;
+  letter-spacing: -1.2px;
+  color: inherit;
+  text-decoration: none;
+  font-weight: 700;
+}
+.wordmark > span:first-child {
+  font-style: italic;
+  font-weight: 400;
+}
+.brand-dot {
+  color: #43886e;
+}
+.model-badge {
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid #d9dfd7;
+  border-radius: 999px;
+  padding: 7px 12px;
+  background: #eef0e8;
+}
+.status-dot {
+  width: 6px;
+  height: 6px;
+  background: #8b958b;
+  border-radius: 50%;
+}
+.ready .status-dot {
+  background: #43886e;
+}
+.error .status-dot {
+  background: #aa583e;
+}
+.intro {
+  margin: 42px 0 24px;
+}
+.eyebrow {
+  font-size: 10px;
+  letter-spacing: 2px;
+  font-weight: 650;
+  color: #7c8377;
+  margin: 0 0 10px;
+}
+h1 {
+  font-family: Georgia, serif;
+  font-size: clamp(26px, 3.5vw, 40px);
+  font-weight: 400;
+  letter-spacing: -0.7px;
+  margin: 0;
+}
+.intro > p:last-child {
+  margin: 10px 0 0;
+  font-size: 14px;
+  color: #727b70;
+}
+.mock-notice {
+  font-size: 12px;
+  color: #715c2f;
+  background: #eee8d8;
+  border: 1px solid #e2d7be;
+  border-radius: 7px;
+  padding: 10px 14px;
+}
+.notebook-tools {
+  gap: 18px;
+  flex-wrap: wrap;
+  background: #eeeee6;
+  border: 1px solid #dfdfd3;
+  border-radius: 10px 10px 0 0;
+  padding: 11px 12px;
+}
+.tool-group {
+  gap: 4px;
+}
+.tool {
+  min-height: 44px;
+  padding: 0 12px;
+  font-size: 12px;
+  border: 0;
+  border-radius: 6px;
+  color: #49554b;
+  background: transparent;
+}
+.tool.active {
+  color: #fff;
+  background: #2f5b48;
+}
+.pen-width {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: #657162;
+}
+.pen-width input {
+  width: 78px;
+  min-height: 44px;
+  accent-color: #2f5b48;
+}
+.pen-width output {
+  width: 16px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.history-tools {
+  margin-left: auto;
+}
+.notebook {
+  position: relative;
+}
+.paper {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 2;
+  background: #fffcf5;
+  border: 1px solid #e2dfd2;
+  border-top: none;
+  box-shadow: 0 8px 22px #373d2510;
+  overflow: hidden;
+}
+.margin-line {
+  position: absolute;
+  left: 3.3333%;
+  top: 0;
+  bottom: 0;
+  border-left: 1px solid #d8b6a060;
+}
+.row-guide {
+  position: absolute;
+  left: 0;
+  right: 0;
+}
+.row-number {
+  position: absolute;
+  top: 12%;
+  left: 1%;
+  color: #aaa897;
+  font:
+    10px Georgia,
+    serif;
+}
+.baseline {
+  position: absolute;
+  top: 65%;
+  left: 4.5%;
+  right: 3%;
+  border-top: 1px solid #dedfd060;
+}
+.canvas-layer {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+.input-layer {
+  pointer-events: auto;
+  touch-action: none;
+  cursor: crosshair;
+}
+.row-feedbacks {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-rows: repeat(3, 1fr);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  pointer-events: none;
+}
+.row-feedback {
+  align-self: end;
+  height: 15%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 4.5%;
+  color: #939888;
+  font-size: 11px;
+  overflow: hidden;
+}
+.feedback-row {
+  display: none;
+}
+.row-feedback.ready {
+  color: #2f7760;
+}
+.row-feedback.error {
+  color: #a34332;
+}
+.page-footer {
+  font-size: 10px;
+  color: #858c7d;
+  padding: 12px 1px;
+  align-items: start;
+}
+.model-message {
+  font-size: 12px;
+  color: #747d6e;
+  margin: 8px 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+progress {
+  width: 120px;
+  accent-color: #2f5b48;
+}
+.input-error {
+  font-size: 13px;
+  color: #a34332;
+}
+.fixture-panel {
+  margin-top: 26px;
+  padding: 20px;
+  border: 1px dashed #cbd0bf;
+  border-radius: 9px;
+  background: #eeeee5;
+}
+.fixture-heading {
+  flex-wrap: wrap;
+}
+.fixture-heading .eyebrow {
+  margin-bottom: 3px;
+}
+h2 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 550;
+}
+.fixture-help,
+.fixture-status {
+  font-size: 12px;
+  color: #78806e;
+}
+.fixture-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr 2fr 1fr 1.2fr;
+  gap: 10px;
+  margin: 14px 0;
+}
+.fixture-fields label {
+  display: grid;
+  gap: 5px;
+  font-size: 11px;
+  color: #66715f;
+}
+.fixture-fields input,
+.fixture-fields select {
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  border: 1px solid #cfd3c5;
+  border-radius: 5px;
+  background: #faf9f3;
+  color: #273832;
+  padding: 8px;
+  font-size: 12px;
+}
+.button {
+  min-height: 44px;
+  padding: 9px 13px;
+  background: #faf9f3;
+  color: #405d49;
+  border: 1px solid #c8d0be;
+  border-radius: 6px;
+  font-size: 12px;
+}
+.button.primary {
+  background: #2f5b48;
+  color: #fff;
+  border-color: #2f5b48;
+}
+.fixture-status {
+  min-height: 18px;
+  margin-bottom: 0;
+}
+@media (max-width: 760px) {
+  .workspace {
+    padding: 22px 20px 32px;
+  }
+  .intro {
+    margin-top: 30px;
+  }
+  .notebook-tools {
+    gap: 8px;
+  }
+  .history-tools {
+    margin-left: 0;
+  }
+  .fixture-fields {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+@media (max-width: 600px) {
+  .page-footer {
+    flex-direction: column;
+    gap: 4px;
+  }
+  .row-feedbacks {
+    position: static;
+    gap: 5px;
+    margin-top: 10px;
+  }
+  .row-feedback {
+    height: auto;
+    min-height: 22px;
+    padding: 0;
+    font-size: 12px;
+  }
+  .feedback-row {
+    display: inline;
+    color: #858c7d;
+  }
+  .tool {
+    padding: 0 8px;
+  }
+  .fixture-panel {
+    padding: 14px;
+  }
+}
+fieldset.tool-group {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.input-layer:focus-visible {
+  outline-offset: -3px;
+}

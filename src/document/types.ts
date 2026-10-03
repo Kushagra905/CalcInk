@@ -40,11 +40,7 @@ export type InkOperation =
     };
 
 export interface HistoryCommand {
-  readonly kind:
-    | "draw"
-    | "erase-stroke"
-    | "erase-pixel"
-    | "clear";
+  readonly kind: "draw" | "erase-stroke" | "erase-pixel" | "clear";
 
   readonly changes: readonly {
     readonly rowId: RowId;
@@ -53,22 +49,17 @@ export interface HistoryCommand {
   }[];
 }
 
+export interface RowSnapshot {
+  readonly rowId: RowId;
+  readonly rowRevision: number;
+  readonly operations: readonly InkOperation[];
+}
+
+export type EditReason = HistoryCommand["kind"] | "undo" | "redo";
+
 export interface DocumentEditEvent {
   readonly phase: "begin" | "commit" | "cancel";
-
-  readonly reason:
-    | "draw"
-    | "erase-stroke"
-    | "erase-pixel"
-    | "undo"
-    | "redo"
-    | "clear";
-
+  readonly reason: EditReason;
   readonly epoch: number;
-
-  readonly rows: readonly {
-    readonly rowId: RowId;
-    readonly rowRevision: number;
-    readonly operations: readonly InkOperation[];
-  }[];
+  readonly rows: readonly RowSnapshot[];
 }

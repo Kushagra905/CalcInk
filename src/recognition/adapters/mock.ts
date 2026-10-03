@@ -12,18 +12,12 @@ export type MockFixture = Pick<
 >;
 
 export interface MockAdapterOptions {
-  readonly fixtureFor: (
-    request: RecognitionRequest,
-  ) => MockFixture;
+  readonly fixtureFor: (request: RecognitionRequest) => MockFixture;
 
-  readonly latencyMs?: (
-    request: RecognitionRequest,
-  ) => number;
+  readonly latencyMs?: (request: RecognitionRequest) => number;
 }
 
-export class MockRecognitionAdapter
-  implements RecognitionAdapter
-{
+export class MockRecognitionAdapter implements RecognitionAdapter {
   readonly modelId = "mock-v1";
 
   private state: "new" | "ready" | "disposed" = "new";
@@ -56,9 +50,7 @@ export class MockRecognitionAdapter
     });
   }
 
-  async recognize(
-    request: RecognitionRequest,
-  ): Promise<RecognitionResponse> {
+  async recognize(request: RecognitionRequest): Promise<RecognitionResponse> {
     this.assertReady();
 
     const delay = this.options.latencyMs?.(request) ?? 0;

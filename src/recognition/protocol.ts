@@ -1,8 +1,4 @@
-import type {
-  Bounds,
-  InkOperation,
-  RowId,
-} from "../document/types";
+import type { Bounds, InkOperation, RowId } from "../document/types";
 
 export interface RevisionKey {
   readonly epoch: number;

@@ -1,22 +1,8 @@
-import {
-  afterEach,
-  describe,
-  expect,
-  it,
-  vi,
-} from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import type { MockFixture } from "../../src/recognition/adapters/mock";
+import { MockRecognitionAdapter } from "../../src/recognition/adapters/mock";
 
-import {
-  MockRecognitionAdapter,
-} from "../../src/recognition/adapters/mock";
-
-import type {
-  MockFixture,
-} from "../../src/recognition/adapters/mock";
-
-import type {
-  RecognitionRequest,
-} from "../../src/recognition/protocol";
+import type { RecognitionRequest } from "../../src/recognition/protocol";
 
 const fixture: MockFixture = {
   transcript: "18 + 4 × 3 =",
@@ -52,9 +38,9 @@ describe("MockRecognitionAdapter", () => {
       fixtureFor: () => fixture,
     });
 
-    await expect(
-      adapter.recognize(request()),
-    ).rejects.toThrow("ADAPTER_NOT_READY");
+    await expect(adapter.recognize(request())).rejects.toThrow(
+      "ADAPTER_NOT_READY",
+    );
   });
 
   it("preserves request identity and returns the fixture", async () => {
@@ -86,8 +72,7 @@ describe("MockRecognitionAdapter", () => {
 
     const adapter = new MockRecognitionAdapter({
       fixtureFor: () => fixture,
-      latencyMs: (input) =>
-        input.requestId === 1 ? 100 : 10,
+      latencyMs: (input) => (input.requestId === 1 ? 100 : 10),
     });
 
     await adapter.initialize();
@@ -124,13 +109,11 @@ describe("MockRecognitionAdapter", () => {
 
     await adapter.initialize();
 
-    await expect(
-      adapter.recognize(request(1)),
-    ).rejects.toThrow("MOCK_INFERENCE_FAILURE");
+    await expect(adapter.recognize(request(1))).rejects.toThrow(
+      "MOCK_INFERENCE_FAILURE",
+    );
 
-    await expect(
-      adapter.recognize(request(2)),
-    ).resolves.toMatchObject({
+    await expect(adapter.recognize(request(2))).resolves.toMatchObject({
       requestId: 2,
       outcome: {
         kind: "answer",
@@ -147,13 +130,11 @@ describe("MockRecognitionAdapter", () => {
     await adapter.initialize();
     adapter.dispose();
 
-    await expect(
-      adapter.recognize(request()),
-    ).rejects.toThrow("ADAPTER_DISPOSED");
+    await expect(adapter.recognize(request())).rejects.toThrow(
+      "ADAPTER_DISPOSED",
+    );
 
-    await expect(
-      adapter.initialize(),
-    ).rejects.toThrow("ADAPTER_DISPOSED");
+    await expect(adapter.initialize()).rejects.toThrow("ADAPTER_DISPOSED");
   });
 
   it("rejects a pending request if disposed while waiting", async () => {
@@ -168,9 +149,7 @@ describe("MockRecognitionAdapter", () => {
 
     const pending = adapter.recognize(request());
 
-    const assertion = expect(pending).rejects.toThrow(
-      "ADAPTER_DISPOSED",
-    );
+    const assertion = expect(pending).rejects.toThrow("ADAPTER_DISPOSED");
 
     adapter.dispose();
 

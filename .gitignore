@@ -148,3 +148,4 @@ coverage/
 .vitest/
 public/models/
 public/runtime/
+dist-lab/

@@ -9,11 +9,23 @@
   "scripts": {
     "check": "tsc --noEmit",
     "test:unit": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "dev:lab": "vite --config vite.lab.config.ts",
+    "build:lab": "vite build --config vite.lab.config.ts",
+    "preview:lab": "vite preview --config vite.lab.config.ts",
+    "assets:prepare": "node scripts/model-assets.mjs prepare",
+    "assets:verify": "node scripts/model-assets.mjs verify",
+    "benchmark:report": "node --experimental-strip-types scripts/benchmark-report.mjs"
   },
   "devDependencies": {
     "@types/node": "26.6.4",
     "typescript": "7.0.2",
+    "vite": "8.3.2",
     "vitest": "5.0.3"
+  },
+  "dependencies": {
+    "@huggingface/transformers": "4.3.0",
+    "ink-on": "0.1.0",
+    "onnxruntime-web": "1.22.0"
   }
 }

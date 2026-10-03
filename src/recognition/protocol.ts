@@ -70,8 +70,9 @@ export interface RecognitionConfig {
 }
 
 export interface AdapterProgress {
-  readonly stage: "initializing" | "ready";
-  readonly fraction: number;
+  readonly stage: "verifying" | "loading" | "initializing" | "ready";
+  readonly fraction: number | null;
+  readonly detail?: string;
 }
 
 export type MainToWorkerMessage =

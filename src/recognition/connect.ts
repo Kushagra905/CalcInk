@@ -1,12 +1,14 @@
 import type { DocumentStore } from "../document/store";
+import { getCandidate, selectedModelId } from "./candidates";
 import type { CoordinatorCallbacks, RecognitionCoordinator } from "./contracts";
+import { createCoordinator } from "./coordinator";
 
-// B replaces this entry point when the licensed local model is integrated.
 export function connectRecognition(
-  _document: DocumentStore,
+  document: DocumentStore,
   callbacks: CoordinatorCallbacks,
 ): RecognitionCoordinator {
-  const unavailable = () => callbacks.onModelState({ kind: "unavailable" });
-  unavailable();
-  return { retry: unavailable, dispose() {} };
+  return createCoordinator(document, callbacks, {
+    candidate: getCandidate(selectedModelId),
+    baseUrl: new URL(import.meta.env.BASE_URL, window.location.href).href,
+  });
 }

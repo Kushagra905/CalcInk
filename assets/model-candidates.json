@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "reviewedAt": "2026-10-03",
-  "selectedModelId": null,
+  "selectedModelId": "trocr-mathwriting-int8",
   "candidates": [
     {
       "modelId": "trocr-mathwriting-int8",

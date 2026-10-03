@@ -2,7 +2,7 @@
 
 ## Implementation status
 
-Phase 1 tooling is implemented. Final model selection is pending the team's real handwriting samples. `assets/model-candidates.json` intentionally keeps `selectedModelId` null. No development accuracy percentage or p95 has been measured on the required 24-sample set.
+Phase 1 tooling is implemented. On October 4, 2026, the user selected **MathWriting TrOCR INT8** as the final model. `assets/model-candidates.json` records `selectedModelId: "trocr-mathwriting-int8"`; the lab and asset commands use that selection by default. TrOCR's weight-license evidence, real browser inference and genuine handwriting benchmark remain pending. No development accuracy percentage or p95 has been measured on the required 24-sample set.
 
 Verified on 3 October 2026:
 
@@ -12,14 +12,14 @@ Verified on 3 October 2026:
 - The first observed smoke request used approximately 60 ms preprocessing and 617 ms inference in the in-app browser. This is one observation, not a p95 or representative handwriting benchmark.
 - Downloaded ink-on model assets total 7,582,523 bytes. Prepared model plus runtime files total 40,730,526 bytes. Generated assets are ignored by Git.
 
-Arithmetic evaluation is Phase 2. The real adapters currently return transcript, visible bounds, timings, and `EVALUATION_ONLY` status, not a calculated answer. Debounce and reactive document scheduling are Phase 3. Complete offline cache/reload readiness is Phase 5; `Local model ready` does not imply `Ready offline`.
+Phase 2 adds deterministic worker arithmetic for supported adapter transcripts. Phase 3 now adds debounce, reactive document scheduling and notebook results using the same TrialClient/worker protocol. Complete offline cache/reload readiness is Phase 5; `Local model ready` does not imply `Ready offline`.
 
 ## Candidate review
 
 | Candidate | Evidence and decision |
 |---|---|
-| MathWriting TrOCR INT8 | Initial accuracy candidate. Export revision `cdc13b093c439bb894fd11d8bbd8d237ed16a257`. Both encoder and decoder use the INT8 variant; their weights are approximately 388 MB together, and the full chosen model/config set is 392,880,983 bytes. File presence does not prove browser compatibility. The export and fine-tune metadata provide no explicit license field or LICENSE file; preparation/loading remains blocked. The integration code is not runtime-verified for this candidate. |
-| ink-on CoMER INT8 | Comparison candidate using repository revision `2585994ee11fe2ed98065c555c4aae8ee9096209`, with the root Apache-2.0 license and model files in the same repository. Retain the license and attribution and review additional upstream weight conditions before final release. Local WASM initialization/inference is verified. Selection still requires the same handwriting benchmark. |
+| MathWriting TrOCR INT8 | User-selected final model. Export revision `cdc13b093c439bb894fd11d8bbd8d237ed16a257`. Both encoder and decoder use the INT8 variant; their weights are approximately 388 MB together, and the full chosen model/config set is 392,880,983 bytes. File presence does not prove browser compatibility. The export and fine-tune metadata provide no explicit license field or LICENSE file; preparation/loading remains blocked. The integration code is not runtime-verified for this candidate. |
+| ink-on CoMER INT8 | Comparison candidate using repository revision `2585994ee11fe2ed98065c555c4aae8ee9096209`, with the root Apache-2.0 license and model files in the same repository. Retain the license and attribution and review additional upstream weight conditions before final release. Local WASM initialization/inference is verified. It is not the selected final model. |
 
 TrOCR's upstream card reports 14.9% character error rate; ink-on reports 36.41% expression accuracy on CROHME2014. These are different metrics/data and cannot establish which model performs better on CalcInk. We do not convert CER into expression accuracy.
 
@@ -36,7 +36,11 @@ npm run assets:verify
 npm run dev:lab
 ```
 
-Open `http://127.0.0.1:5173/tools/model-lab/`.
+Open `http://127.0.0.1:5173/tools/model-lab/`. The default is TrOCR; its preparation/loading
+currently reports `MODEL_LICENSE_UNRESOLVED`. Once explicit weight-license evidence is
+recorded, use the default commands above to prepare and verify TrOCR. For the already
+verified ink-on comparison path, pass `-- ink-on-comer-int8` to both asset commands and
+select ink-on explicitly in the lab. The steps below describe that comparison path.
 
 `--ignore-scripts` is sufficient for this browser lab: Node-native ONNX inference and image processing are not used. npm's packaged platform-specific Vite dependencies are used for the build.
 
@@ -65,7 +69,7 @@ Storage is tied to the browser origin, including the port. Development (`5173`) 
 - Exact expression comparison normalizes whitespace and explicitly equivalent operator glyphs/commands. Decimal points, minus signs, order, and terminal equals remain significant.
 - Fractions, powers, duplicate equals, and unsupported LaTeX structures are not silently rewritten into a passing arithmetic expression.
 - Character error rate uses Levenshtein edits divided by reference character count. It is reported separately from exact expression accuracy and may exceed 100%.
-- p95 uses the nearest-rank method over all 24 timed entries. Successful timings include worker preprocessing plus inference; cold model loading and the initial warm-up are excluded. Failures remain in accuracy and invalidate the gate.
+- p95 uses the nearest-rank method over all 24 timed entries. Successful timings include worker preprocessing, inference and evaluation; cold model loading and the initial warm-up are excluded. Failures remain in accuracy and invalidate the gate.
 - Internal development targets: at least 22/24 exact matches, p95 at most 2,000 ms, and no runtime failures. These are engineering targets, not official guarantees.
 - Passing this development gate still requires offline reload, deployment size, attribution, and later held-out evaluation. Missing samples produce `incomplete`, never a passing score.
 
@@ -73,7 +77,7 @@ Storage is tied to the browser origin, including the port. Development (`5173`) 
 
 `src/recognition/loading-state.ts` exports `LoadingState` and `reduceLoading`. Loading progress may be indeterminate (`fraction: null`); display an indeterminate progress bar rather than inventing a percentage. Initialization errors carry `key: null`; request errors carry their revision identity.
 
-`TrialClient` is an explicit-run lab client with load/retry/unload and one request at a time. It preserves identities and rejects obsolete replies, unloads, and timeouts. It is not the final edit coordinator. In Phase 3, replace its explicit-run scheduling with document-event debounce and a bounded per-row queue.
+`TrialClient` supplies load/unload and one request at a time for both the explicit-run lab and the notebook coordinator. It validates pinned manifest files and request identities, rejects obsolete replies and clears worker handlers/sessions on failure or disposal. `src/recognition/coordinator.ts` subscribes to document events, adds 350 ms debounce, a bounded latest-snapshot queue per row, current-document acceptance and one automatic restart after a ten-second timeout.
 
 `src/ink/replay.ts` supplies shared quadratic curve replay, round dots, and chronological `source-over`/`destination-out` compositing. Use or coordinate this helper in the final ink renderer so model input and visible erasure agree. The worker clips to the 136-unit writing area and translates bounds to logical page coordinates.
 
@@ -84,7 +88,7 @@ The lab is isolated in `tools/model-lab/` and uses `vite.lab.config.ts`; it does
 ```powershell
 npm run check
 npm run test:unit
-npm run assets:verify
+npm run assets:verify -- ink-on-comer-int8
 npm run build:lab
 git diff --check
 git status --short

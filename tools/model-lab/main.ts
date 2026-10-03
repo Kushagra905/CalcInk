@@ -5,7 +5,7 @@ import type { LoadingState } from "../../src/recognition/loading-state";
 import type { BenchmarkEntry } from "../../src/recognition/benchmark";
 import { summarizeBenchmark } from "../../src/recognition/benchmark";
 import { replayInk } from "../../src/ink/replay";
-import { candidates, getCandidate } from "../../src/recognition/candidates";
+import { candidates, getCandidate, selectedModelId } from "../../src/recognition/candidates";
 import { TrialClient } from "../../src/recognition/trial-client";
 import { sampleCases } from "./cases";
 import { parseFixtures } from "./fixtures";
@@ -56,7 +56,7 @@ const client = new TrialClient((state) => {
 });
 
 for (const candidate of candidates) model.add(new Option(candidate.name, candidate.modelId));
-model.value = "ink-on-comer-int8";
+model.value = selectedModelId;
 function showLicense(): void {
   const candidate = getCandidate(model.value);
   element("license").textContent = `${candidate.license.id ?? "License unresolved"} · ${(candidate.files.reduce((sum, item) => sum + item.bytes, 0) / 1_000_000).toFixed(2)} MB model assets. ${candidate.license.note}`;

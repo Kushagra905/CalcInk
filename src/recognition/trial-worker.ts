@@ -81,6 +81,6 @@ async function handle(message: MainToWorkerMessage): Promise<void> {
 }
 
 scope.onmessage = (event: MessageEvent<MainToWorkerMessage>) => {
-  // Trial tool processes one job at a time. Reactive replacement/debounce is Phase 3.
+  // The coordinator dispatches one inference at a time; also serialize initialization/disposal.
   queue = queue.then(() => handle(event.data));
 };

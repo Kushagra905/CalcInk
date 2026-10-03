@@ -1,5 +1,9 @@
 # Phase 0 integration contract
 
+This is the historical foundation contract. Current notebook/lab integration uses the
+shared nested worker protocol and reactive coordinator documented in [Phase 3](phase-3.md).
+The store remains the sole owner of epoch/row revisions; the two erasers are in Phase 4.
+
 These APIs are implemented for Developer A's foundation and are ready for Developer B's review.
 The shared contract is not yet jointly approved. No real-model, arithmetic, or offline result is claimed.
 

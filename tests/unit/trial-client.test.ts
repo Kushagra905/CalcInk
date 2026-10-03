@@ -49,6 +49,55 @@ async function ready(client: TrialClient) {
 }
 
 describe("trial client", () => {
+  it("does not let a foreign initialization error terminate the chosen model", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response(JSON.stringify(manifest))),
+    );
+    vi.stubGlobal("Worker", FakeWorker);
+    const client = new TrialClient(() => {});
+    const loading = client.load(candidate, "https://example.test/");
+    await vi.waitFor(() => expect(FakeWorker.current).not.toBeNull());
+    const worker = FakeWorker.current;
+    if (!worker) throw new Error("Missing worker");
+    worker.emit({
+      type: "ERROR",
+      modelId: "foreign",
+      key: null,
+      code: "FOREIGN",
+      message: "FOREIGN",
+      recoverable: true,
+    });
+    worker.emit({ type: "READY", modelId: candidate.modelId });
+    await loading;
+    expect(worker.terminate).not.toHaveBeenCalled();
+    client.unload();
+  });
+
+  it("rejects a manifest whose weight hashes differ from the pinned catalog", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              ...manifest,
+              files: manifest.files.map((file, index) =>
+                index === 0 ? { ...file, sha256: "0".repeat(64) } : file,
+              ),
+            }),
+          ),
+      ),
+    );
+    vi.stubGlobal("Worker", FakeWorker);
+    const client = new TrialClient(() => {});
+    await expect(
+      client.load(candidate, "https://example.test/"),
+    ).rejects.toThrow("MODEL_MANIFEST_MISMATCH");
+    expect(FakeWorker.current).toBeNull();
+    client.unload();
+  });
+
   it("blocks unlicensed candidates before requesting files", async () => {
     const fetch = vi.fn();
     vi.stubGlobal("fetch", fetch);

@@ -5,6 +5,11 @@ Branch: `b/recognition-foundation`
 Date: 3 October 2026  
 Git actions: no staging, commit, push, or branch switch was performed.
 
+This is the historical October 3 implementation report. On October 4, the user
+selected MathWriting TrOCR INT8 as the final model; the lab and asset commands now
+default to it. Weight-license evidence, browser inference and genuine handwriting
+validation remain pending. See `phase-1-model-evaluation.md` for current status.
+
 ## What is implemented
 
 A browser model lab now captures actual handwriting, initializes a local ONNX candidate in a module worker, exposes progress/failures/retry, and exports measured development reports. Prepared files are verified against pinned SHA-256 hashes; runtime files come from the installed ONNX package. Unit tests exercise the failure and integration boundaries.

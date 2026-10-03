@@ -3,6 +3,7 @@ import { connectRecognition } from "#recognition";
 import { FixturePanel } from "../dev/FixturePanel";
 import { ROWS } from "../document/rows";
 import { createDocumentStore } from "../document/store";
+import type { InkTool } from "../ink/eraser";
 import type {
   ModelState,
   RecognitionCoordinator,
@@ -20,6 +21,8 @@ function emptyFeedback(): Record<string, RowFeedback> {
 export function App() {
   const [document] = useState(createDocumentStore);
   const [width, setWidth] = useState(3);
+  const [tool, setTool] = useState<InkTool>("draw");
+  const [eraserSize, setEraserSize] = useState(12);
   const [error, setError] = useState("");
   const [model, setModel] = useState<ModelState>({ kind: "unavailable" });
   const [feedback, setFeedback] = useState(emptyFeedback);
@@ -27,6 +30,7 @@ export function App() {
   const [capturePrompt, setCapturePrompt] = useState("");
   const [history, setHistory] = useState(document.getHistoryState);
   const coordinator = useRef<RecognitionCoordinator | null>(null);
+  const capacity = document.getCapacityState();
 
   useEffect(
     () => document.subscribe(() => setHistory(document.getHistoryState())),
@@ -76,7 +80,11 @@ export function App() {
       onRecognizing: (rowId) =>
         update(rowId, { kind: "recognizing", transcript: "" }),
       onResult: (result) =>
-        update(result.rowId, { kind: "ready", transcript: result.transcript }),
+        update(result.rowId, {
+          kind: "ready",
+          transcript: result.transcript,
+          result,
+        }),
       onRowError: (rowId, code) =>
         update(rowId, {
           kind: "error",
@@ -131,41 +139,44 @@ export function App() {
       {MOCK_MODE && (
         <p className="mock-notice">
           <strong>Development mock.</strong> Transcripts are fixed fixtures, not
-          handwriting recognition. No answers are calculated.
+          handwriting recognition. Answers use the fixed fixture transcript.
         </p>
       )}
       <section className="notebook-tools" aria-label="Notebook tools">
         <fieldset className="tool-group" aria-label="Drawing tool">
-          <button type="button" className="tool active" aria-pressed="true">
-            Pen
-          </button>
-          <button
-            type="button"
-            className="tool"
-            disabled
-            title="Stroke erasing is not available yet"
-          >
-            Stroke eraser
-          </button>
-          <button
-            type="button"
-            className="tool"
-            disabled
-            title="Pixel erasing is not available yet"
-          >
-            Pixel eraser
-          </button>
+          {(
+            [
+              ["draw", "Pen"],
+              ["erase-stroke", "Stroke eraser"],
+              ["erase-pixel", "Pixel eraser"],
+            ] as const
+          ).map(([kind, label]) => (
+            <button
+              key={kind}
+              type="button"
+              className={`tool ${tool === kind ? "active" : ""}`}
+              aria-pressed={tool === kind}
+              disabled={capacity.full && kind !== "erase-stroke"}
+              onClick={() => setTool(kind)}
+            >
+              {label}
+            </button>
+          ))}
         </fieldset>
         <label className="pen-width">
-          Width{" "}
+          {tool === "draw" ? "Width" : "Eraser size"}{" "}
           <input
             type="range"
-            min="1"
-            max="12"
-            value={width}
-            onChange={(event) => setWidth(Number(event.target.value))}
+            min={tool === "draw" ? 1 : 2}
+            max={tool === "draw" ? 12 : 80}
+            value={tool === "draw" ? width : eraserSize}
+            onChange={(event) =>
+              tool === "draw"
+                ? setWidth(Number(event.target.value))
+                : setEraserSize(Number(event.target.value))
+            }
           />{" "}
-          <output>{width}</output>
+          <output>{tool === "draw" ? width : eraserSize}</output>
         </label>
         <fieldset
           className="tool-group history-tools"
@@ -199,6 +210,8 @@ export function App() {
       <Notebook
         document={document}
         width={width}
+        tool={tool}
+        eraserRadius={eraserSize / 2}
         feedback={feedback}
         onError={setError}
       />
@@ -206,6 +219,12 @@ export function App() {
         <span>Three rows. Plenty of possibilities.</span>
         <span>Your ink stays in this tab; reloading clears it.</span>
       </div>
+      {capacity.full && (
+        <p role="status" className="input-error">
+          Page capacity reached. Use the stroke eraser, Clear or Undo to make
+          room; existing ink is preserved.
+        </p>
+      )}
       {MOCK_MODE && (
         <a className="capture-link" href="#capture-title">
           Return to sample controls ↓
@@ -233,7 +252,9 @@ export function App() {
         )}
         {!heldOutCapture && model.kind === "error" && (
           <span role="alert">
-            Recognition could not start. Your ink is preserved; try again.
+            {model.code.startsWith("MODEL_LICENSE_UNRESOLVED")
+              ? "TrOCR needs explicit weight-license evidence before loading. Your ink is preserved."
+              : `Recognition could not start (${model.code}). Your ink is preserved; try again.`}
           </span>
         )}
         {failed && (

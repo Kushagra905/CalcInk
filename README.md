@@ -2,11 +2,11 @@
 
 On-device handwritten math calculator for the Inter IIT Software Development Bootcamp.
 
-## Phase 0
+## Notebook foundation (Developer A)
 
 The foundation includes a React/TypeScript/Vite notebook, three aligned Canvas 2D layers,
 basic pen capture, immutable document snapshots/edit events, and shared recognition contracts.
-Real recognition, arithmetic, history, erasers, inline answers, and offline caching are not implemented yet.
+The notebook currently uses the development mock. Real recognition is available separately in the Phase 1 model lab below; arithmetic, history, erasers, inline answers, and offline caching remain pending.
 
 Use Node.js 22.12+ (tested here with Node.js 24). Dependencies are pinned in `package-lock.json`.
 
@@ -44,8 +44,7 @@ npm run preview
 
 `check` runs TypeScript plus Biome formatting/linting. `npm run format` applies formatting.
 Playwright starts the mock server automatically and tests the real browser-worker path.
-Unit tests need no model files. `assets:prepare`/`assets:verify` and release/offline checks belong to
-the later model/asset integration; no placeholder scripts claim to verify unavailable assets.
+Unit tests need no model files. The model lab provides `assets:prepare`/`assets:verify` for local model assets. Final release/offline checks remain pending.
 
 The initial CI workflow runs these foundation checks on pushes and pull requests; it does not deploy.
 Production verification attempts a mock-mode build and checks the actual output for mock-worker/fixture leakage.
@@ -55,3 +54,30 @@ Production verification attempts a mock-mode build and checks the actual output 
 See [the Phase 0 contract](docs/phase-0.md). The document store owns epoch/row revisions;
 the coordinator owns request IDs and accepted results. Review these interfaces together before merging.
 Neither the mock tests nor the synthetic fixture establish model accuracy, latency, or offline readiness.
+
+## Developer B — Phase 1 model lab
+
+Requires Node.js 22.12 or newer. The notebook foundation is described above; the arithmetic pipeline and connecting the real model to that notebook are later phases.
+
+```powershell
+npm ci
+npm run assets:prepare
+npm run assets:verify
+npm run dev:lab
+```
+
+Open `http://127.0.0.1:5173/tools/model-lab/` to initialize the local comparison model, capture handwriting samples, and export measured development reports.
+
+The TrOCR fine-tune remains blocked because its weight license is unresolved. ink-on is a comparison candidate; no final model or handwriting accuracy is claimed yet.
+
+Read [Phase 1 model evaluation](docs/phase-1-model-evaluation.md) for sample capture, benchmark targets, loading integration, asset provenance, and review commands.
+
+```powershell
+npm run check
+npm run test:unit
+npm run build:lab
+```
+
+## Shared integration status
+
+The readonly document types include row snapshots and edit reasons used by both implementations. The Phase 0 notebook worker contract and Phase 1 trial worker protocol remain separate; their unification and shared notebook/worker replay are part of the planned recognition integration, not this merge.

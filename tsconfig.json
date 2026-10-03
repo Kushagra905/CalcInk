@@ -14,7 +14,11 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
     "types": ["vite/client", "node"],
-    "paths": { "#recognition": ["./src/recognition/connect.ts"] }
+    "paths": {
+      "#recognition": ["./src/recognition/connect.ts"]
+    },
+    "resolveJsonModule": true,
+    "forceConsistentCasingInFileNames": true
   },
-  "include": ["src", "tests", "*.config.ts"]
+  "include": ["src", "tests", "tools", "*.config.ts"]
 }

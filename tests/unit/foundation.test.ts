@@ -111,10 +111,10 @@ describe("document and geometry contract", () => {
     const savedOperation = saved.operations[0];
     if (operation.kind !== "stroke" || savedOperation.kind !== "stroke")
       throw new Error("Expected pen ink");
-    operation.stroke.points[0].x = 900;
+    Object.assign(operation.stroke.points[0], { x: 900 });
     expect(savedOperation.stroke.points[0].x).toBe(20);
     expect(() => {
-      savedOperation.stroke.points[0].x = 900;
+      Object.assign(savedOperation.stroke.points[0], { x: 900 });
     }).toThrow();
     expect(Object.isFrozen(events[1].rows)).toBe(true);
     document.begin("row-1");
@@ -137,7 +137,8 @@ describe("document and geometry contract", () => {
     document.begin("row-1");
     expect(() => document.commit([stroke("row-2")])).toThrow();
     const invalid = stroke();
-    if (invalid.kind === "stroke") invalid.stroke.points[0].x = Number.NaN;
+    if (invalid.kind === "stroke")
+      Object.assign(invalid.stroke.points[0], { x: Number.NaN });
     expect(() => document.commit([invalid])).toThrow("Invalid ink point");
     const malformed = stroke();
     if (malformed.kind === "stroke") {
@@ -162,7 +163,8 @@ describe("document and geometry contract", () => {
     document.begin("row-1");
     const overLimit = Array.from({ length: 1001 }, (_, index): InkOperation => {
       const dot = stroke();
-      if (dot.kind === "stroke") dot.stroke.id = `dot-${index}`;
+      if (dot.kind === "stroke")
+        Object.assign(dot.stroke, { id: `dot-${index}` });
       return dot;
     });
     expect(() => document.commit(overLimit)).toThrow("capacity");

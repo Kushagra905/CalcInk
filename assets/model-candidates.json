@@ -1,0 +1,115 @@
+{
+  "schemaVersion": 1,
+  "reviewedAt": "2026-10-03",
+  "selectedModelId": null,
+  "candidates": [
+    {
+      "modelId": "trocr-mathwriting-int8",
+      "adapter": "trocr",
+      "name": "MathWriting TrOCR INT8 (license unresolved)",
+      "revision": "cdc13b093c439bb894fd11d8bbd8d237ed16a257",
+      "source": "https://huggingface.co/onnx-community/latex_finetuned-ONNX",
+      "license": {
+        "status": "missing",
+        "id": null,
+        "evidence": "https://huggingface.co/onnx-community/latex_finetuned-ONNX/blob/cdc13b093c439bb894fd11d8bbd8d237ed16a257/README.md",
+        "note": "No license field or LICENSE file in the export or fine-tune repository. Base-model licensing does not establish fine-tune redistribution permission. Asset preparation and trial loading are blocked until evidence is recorded."
+      },
+      "files": [
+        {
+          "path": "models/trocr-mathwriting-int8/config.json",
+          "url": "https://huggingface.co/onnx-community/latex_finetuned-ONNX/resolve/cdc13b093c439bb894fd11d8bbd8d237ed16a257/config.json",
+          "bytes": 4763,
+          "sha256": "7821356bec0a906ee8c397998009bba04e27d03c3cfddff61d7991a069b20ca2"
+        },
+        {
+          "path": "models/trocr-mathwriting-int8/generation_config.json",
+          "url": "https://huggingface.co/onnx-community/latex_finetuned-ONNX/resolve/cdc13b093c439bb894fd11d8bbd8d237ed16a257/generation_config.json",
+          "bytes": 185,
+          "sha256": "cf20523cd2e721d9abfea5c35d37c298694c8e4cee40850444f1475d4854b2ba"
+        },
+        {
+          "path": "models/trocr-mathwriting-int8/preprocessor_config.json",
+          "url": "https://huggingface.co/onnx-community/latex_finetuned-ONNX/resolve/cdc13b093c439bb894fd11d8bbd8d237ed16a257/preprocessor_config.json",
+          "bytes": 390,
+          "sha256": "96fd208e04b8eb30aace1a1d9188a82fdc0001281f4032788f8e357a52d1a847"
+        },
+        {
+          "path": "models/trocr-mathwriting-int8/tokenizer.json",
+          "url": "https://huggingface.co/onnx-community/latex_finetuned-ONNX/resolve/cdc13b093c439bb894fd11d8bbd8d237ed16a257/tokenizer.json",
+          "bytes": 3558797,
+          "sha256": "1b9891adc13a70625d69e21a0e958ca2ef7ff88a893e617ba150f5209999fb64"
+        },
+        {
+          "path": "models/trocr-mathwriting-int8/tokenizer_config.json",
+          "url": "https://huggingface.co/onnx-community/latex_finetuned-ONNX/resolve/cdc13b093c439bb894fd11d8bbd8d237ed16a257/tokenizer_config.json",
+          "bytes": 1389,
+          "sha256": "81a420e61469a57f41fcae7aef7ef86ab696e511ff696817a2af50840841b5f5"
+        },
+        {
+          "path": "models/trocr-mathwriting-int8/special_tokens_map.json",
+          "url": "https://huggingface.co/onnx-community/latex_finetuned-ONNX/resolve/cdc13b093c439bb894fd11d8bbd8d237ed16a257/special_tokens_map.json",
+          "bytes": 957,
+          "sha256": "8293ae960b0a0852d4d3813118030a1149a3ed9fe37bc2e1e7b3c2e62eb2d4b7"
+        },
+        {
+          "path": "models/trocr-mathwriting-int8/vocab.json",
+          "url": "https://huggingface.co/onnx-community/latex_finetuned-ONNX/resolve/cdc13b093c439bb894fd11d8bbd8d237ed16a257/vocab.json",
+          "bytes": 798293,
+          "sha256": "ed19656ea1707df69134c4af35c8ceda2cc9860bf2c3495026153a133670ab5e"
+        },
+        {
+          "path": "models/trocr-mathwriting-int8/merges.txt",
+          "url": "https://huggingface.co/onnx-community/latex_finetuned-ONNX/resolve/cdc13b093c439bb894fd11d8bbd8d237ed16a257/merges.txt",
+          "bytes": 456318,
+          "sha256": "1ce1664773c50f3e0cc8842619a93edc4624525b728b188a9e0be33b7726adc5"
+        },
+        {
+          "path": "models/trocr-mathwriting-int8/onnx/encoder_model_int8.onnx",
+          "url": "https://huggingface.co/onnx-community/latex_finetuned-ONNX/resolve/cdc13b093c439bb894fd11d8bbd8d237ed16a257/onnx/encoder_model_int8.onnx",
+          "bytes": 87942932,
+          "sha256": "4357ff953e4b731c94c65ab1d7e043c6cdb3d06e681c7cdc2db863c0a2a0096d"
+        },
+        {
+          "path": "models/trocr-mathwriting-int8/onnx/decoder_model_int8.onnx",
+          "url": "https://huggingface.co/onnx-community/latex_finetuned-ONNX/resolve/cdc13b093c439bb894fd11d8bbd8d237ed16a257/onnx/decoder_model_int8.onnx",
+          "bytes": 300116959,
+          "sha256": "212218ae0e30939fd2a9ab9bc90a6c456f1fcd2c7dd122f89e7973f77673ce3c"
+        }
+      ]
+    },
+    {
+      "modelId": "ink-on-comer-int8",
+      "adapter": "ink-on",
+      "name": "ink-on CoMER INT8 (comparison candidate)",
+      "revision": "2585994ee11fe2ed98065c555c4aae8ee9096209",
+      "source": "https://github.com/kimseungdae/ink-on",
+      "license": {
+        "status": "repository",
+        "id": "Apache-2.0",
+        "evidence": "https://github.com/kimseungdae/ink-on/blob/2585994ee11fe2ed98065c555c4aae8ee9096209/LICENSE",
+        "note": "Repository includes the ONNX files and a root Apache-2.0 license. Retain attribution and license; record any additional upstream weight conditions before final release."
+      },
+      "files": [
+        {
+          "path": "models/ink-on-comer-int8/encoder_int8.onnx",
+          "url": "https://raw.githubusercontent.com/kimseungdae/ink-on/2585994ee11fe2ed98065c555c4aae8ee9096209/public/models/comer/encoder_int8.onnx",
+          "bytes": 3460779,
+          "sha256": "272f17c7b120db61db6cd8d77e695d0139144044abd57d9b23284435a5d916fa"
+        },
+        {
+          "path": "models/ink-on-comer-int8/decoder_int8.onnx",
+          "url": "https://raw.githubusercontent.com/kimseungdae/ink-on/2585994ee11fe2ed98065c555c4aae8ee9096209/public/models/comer/decoder_int8.onnx",
+          "bytes": 4118047,
+          "sha256": "658901d81ca3aa4b62b0da262e8fe67ebcfdac19cfb52ca2cfd076bebd481088"
+        },
+        {
+          "path": "models/ink-on-comer-int8/vocab.json",
+          "url": "https://raw.githubusercontent.com/kimseungdae/ink-on/2585994ee11fe2ed98065c555c4aae8ee9096209/public/models/comer/vocab.json",
+          "bytes": 3697,
+          "sha256": "1d75cbbea3bed558683d7e9c3b3c72069ef2143a155d5f8c610f85a281af000c"
+        }
+      ]
+    }
+  ]
+}

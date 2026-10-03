@@ -18,9 +18,19 @@
     "test:e2e": "playwright test",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview --host 127.0.0.1",
-    "verify:production": "node scripts/verify-production.mjs"
+    "verify:production": "node scripts/verify-production.mjs",
+    "test:watch": "vitest",
+    "dev:lab": "vite --config vite.lab.config.ts",
+    "build:lab": "vite build --config vite.lab.config.ts",
+    "preview:lab": "vite preview --config vite.lab.config.ts",
+    "assets:prepare": "node scripts/model-assets.mjs prepare",
+    "assets:verify": "node scripts/model-assets.mjs verify",
+    "benchmark:report": "node --experimental-strip-types scripts/benchmark-report.mjs"
   },
   "dependencies": {
+    "@huggingface/transformers": "4.3.0",
+    "ink-on": "0.1.0",
+    "onnxruntime-web": "1.22.0",
     "react": "19.3.0",
     "react-dom": "19.3.0"
   },

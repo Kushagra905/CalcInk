@@ -147,3 +147,7 @@ public/models/
 public/runtime/
 playwright-report/
 test-results/
+dist/
+coverage/
+.vitest/
+dist-lab/

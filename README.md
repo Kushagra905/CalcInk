@@ -165,3 +165,16 @@ both implementations. Notebook and lab share the nested worker protocol and Tria
 The notebook's coordinator supplies reactive scheduling and accepted callbacks. The store
 owns revisions/epoch, and history never rolls them back. Genuine TrOCR trial evidence is
 still pending; selection alone does not demonstrate recognition accuracy.
+
+## Developer B — Phase 2 strict arithmetic
+
+Notebook and lab share the strict worker arithmetic pipeline. Responses retain raw model
+text for transcription benchmarks and expose normalized text separately. Exactly one
+terminal equals is required; unsupported notation is unrecognized, malformed arithmetic
+is invalid, and exact division by zero returns Undefined. The whole expression is parsed
+before evaluation. Limits and decimal formatting are documented in
+[Phase 2 arithmetic](docs/phase-2-arithmetic.md).
+
+The lab displays raw/normalized text, readable outcomes and all three timing fields.
+Held-out mode disables recognition and benchmarking and exports its samples separately.
+TrOCR remains selected; its weight-license evidence and real handwriting validation are pending.

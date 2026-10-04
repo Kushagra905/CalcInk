@@ -5,6 +5,7 @@ import type { LoadingState } from "../../src/recognition/loading-state";
 import type { BenchmarkEntry } from "../../src/recognition/benchmark";
 import { summarizeBenchmark } from "../../src/recognition/benchmark";
 import { replayInk } from "../../src/ink/replay";
+import { describeOutcome } from "../../src/math/status";
 import { candidates, getCandidate, selectedModelId } from "../../src/recognition/candidates";
 import { TrialClient } from "../../src/recognition/trial-client";
 import { sampleCases } from "./cases";
@@ -50,7 +51,7 @@ const client = new TrialClient((state) => {
     status.textContent = state.progress?.detail ?? "Checking local model manifest…";
   } else {
     progress.value = state.kind === "ready" ? 1 : 0;
-    status.textContent = state.kind === "ready" ? "Local model ready. Phase 5 will add offline caching." : state.kind === "error" ? `Load failed: ${state.message}. Prepare assets, then retry.` : "Model not initialized.";
+    status.textContent = state.kind === "ready" ? "Local model ready. Phase 5 will add offline caching." : state.kind === "error" ? ["OFFSCREEN_CANVAS_UNAVAILABLE", "CANVAS_2D_UNAVAILABLE"].includes(state.message) ? "This browser cannot rasterize ink in a worker. Use a browser with OffscreenCanvas 2D support." : `Load failed: ${state.message}. Prepare assets, then retry.` : "Model not initialized.";
   }
   syncControls();
 });
@@ -157,7 +158,7 @@ element("recognize").onclick = async () => {
   busy = true; syncControls();
   try {
     const result = await infer(structuredClone(operations), capturedRevision);
-    if (revision === capturedRevision) element("result").textContent = JSON.stringify({ transcript: result.transcript, outcome: result.outcome, timing: result.timing, visibleInkBounds: result.visibleInkBounds }, null, 2);
+    if (revision === capturedRevision) element("result").textContent = JSON.stringify({ transcript: result.transcript, normalizedTranscript: result.normalizedTranscript, outcome: result.outcome, status: describeOutcome(result.outcome), timing: result.timing, visibleInkBounds: result.visibleInkBounds }, null, 2);
   } catch (error) { if (revision === capturedRevision) element("result").textContent = String(error); }
   finally { busy = false; syncControls(); }
 };

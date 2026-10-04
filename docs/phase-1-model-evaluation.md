@@ -12,7 +12,7 @@ Verified on 3 October 2026:
 - The first observed smoke request used approximately 60 ms preprocessing and 617 ms inference in the in-app browser. This is one observation, not a p95 or representative handwriting benchmark.
 - Downloaded ink-on model assets total 7,582,523 bytes. Prepared model plus runtime files total 40,730,526 bytes. Generated assets are ignored by Git.
 
-Phase 2 adds deterministic worker arithmetic for supported adapter transcripts. Phase 3 now adds debounce, reactive document scheduling and notebook results using the same TrialClient/worker protocol. Complete offline cache/reload readiness is Phase 5; `Local model ready` does not imply `Ready offline`.
+Phase 2 adds strict worker arithmetic for supported adapter transcripts, retaining raw benchmark text and adding normalized text, outcome, and evaluation timing. Decoder-limit failures are preserved. See [Phase 2 arithmetic](phase-2-arithmetic.md). Phase 3 now adds debounce, reactive document scheduling and notebook results using the same TrialClient/worker protocol. Complete offline cache/reload readiness is Phase 5; `Local model ready` does not imply `Ready offline`.
 
 ## Candidate review
 

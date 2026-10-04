@@ -61,7 +61,9 @@ export class TrocrAdapter implements RecognitionAdapter {
     if (this.disposed) throw new Error("ADAPTER_DISPOSED");
     if (!this.pipe) throw new Error("ADAPTER_NOT_READY");
     const start = performance.now();
-    const { RawImage } = await import("@huggingface/transformers");
+    const { RawImage, TextStreamer } = await import(
+      "@huggingface/transformers"
+    );
     const raster = rasterizeRow(request.operations, request.rowId);
     const key = {
       epoch: request.epoch,
@@ -98,8 +100,20 @@ export class TrocrAdapter implements RecognitionAdapter {
     );
     const preprocessMs = performance.now() - start;
     const inferStart = performance.now();
+    let generatedTokens = 0;
+    const streamer = new TextStreamer(this.pipe.tokenizer, {
+      skip_prompt: true,
+      skip_special_tokens: false,
+      callback_function: () => {},
+      token_callback_function: (tokens) => {
+        generatedTokens += tokens.length;
+      },
+    });
     const result = await this.pipe(raw, {
       max_new_tokens: this.config.maxOutputTokens,
+      do_sample: false,
+      num_beams: 1,
+      streamer,
     });
     if (this.disposed) throw new Error("ADAPTER_DISPOSED");
     const first = result[0];
@@ -109,7 +123,13 @@ export class TrocrAdapter implements RecognitionAdapter {
       ...key,
       modelId: this.modelId,
       transcript,
-      outcome: { kind: "unrecognized", code: "EVALUATION_ONLY" },
+      outcome: {
+        kind: "unrecognized",
+        code:
+          generatedTokens >= this.config.maxOutputTokens
+            ? "OUTPUT_LIMIT"
+            : "EVALUATION_ONLY",
+      },
       visibleInkBounds: raster.visibleInkBounds,
       timing: {
         preprocessMs,

@@ -70,15 +70,15 @@ scope.onmessage = ({ data }: MessageEvent<MainToWorkerMessage>) => {
       request.operations,
       request.rowId,
     ).visibleInkBounds;
-    const result = evaluateTranscript(
-      bounds ? (query.get("transcript") ?? "18+4×3=") : "",
-    );
+    const transcript = bounds ? (query.get("transcript") ?? "18+4×3=") : "";
+    const result = evaluateTranscript(transcript);
     send({
       type: "RESULT",
       response: {
         ...request,
         modelId: MODEL_ID,
         ...result,
+        transcript,
         visibleInkBounds: bounds,
         timing: { preprocessMs: 0, inferenceMs: 0, evaluateMs: 0 },
       },

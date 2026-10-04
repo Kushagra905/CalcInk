@@ -152,7 +152,7 @@ describe("trial client", () => {
         modelId: wrong.modelId,
         code: "FOREIGN",
         message: "FOREIGN",
-        recoverable: true,
+        recoverable: false,
       });
       await Promise.resolve();
       expect(accepted).toBe(false);
@@ -175,6 +175,48 @@ describe("trial client", () => {
     client.unload();
     await assertion;
     expect(worker.terminate).toHaveBeenCalled();
+  });
+  it("retires the worker after a matching fatal runtime error", async () => {
+    const states: LoadingState[] = [];
+    const client = new TrialClient((state) => states.push(state));
+    const worker = await ready(client);
+    const failed = expect(
+      client.recognize({
+        epoch: 2,
+        rowId: "row-1",
+        rowRevision: 4,
+        operations: [],
+      }),
+    ).rejects.toThrow("RUNTIME_FAILED");
+    const message = worker.messages.find((item) => item.type === "RECOGNIZE");
+    if (message?.type !== "RECOGNIZE") throw new Error("Missing request");
+    worker.emit({
+      type: "ERROR",
+      key: message.request,
+      modelId: candidate.modelId,
+      code: "RUNTIME_FAILED",
+      message: "RUNTIME_FAILED",
+      recoverable: false,
+    });
+    await failed;
+    expect(worker.terminate).toHaveBeenCalledTimes(1);
+    expect(worker.onmessage).toBeNull();
+    expect(worker.onerror).toBeNull();
+    expect(states.at(-1)).toEqual({
+      kind: "error",
+      modelId: candidate.modelId,
+      message: "RUNTIME_FAILED",
+    });
+    await expect(
+      client.recognize({
+        epoch: 2,
+        rowId: "row-1",
+        rowRevision: 4,
+        operations: [],
+      }),
+    ).rejects.toThrow("ADAPTER_NOT_READY");
+    client.unload();
+    expect(worker.terminate).toHaveBeenCalledTimes(1);
   });
   it("does not create a worker after unloading during manifest fetch", async () => {
     let finish!: (response: Response) => void;

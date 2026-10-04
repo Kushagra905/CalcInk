@@ -20,12 +20,12 @@ async function handle(message: MainToWorkerMessage): Promise<void> {
   let key: RevisionKey | null = null;
   try {
     if (message.type === "DISPOSE") {
-      adapter?.dispose();
+      await adapter?.dispose();
       adapter = null;
       return;
     }
     if (message.type === "INIT") {
-      adapter?.dispose();
+      await adapter?.dispose();
       adapter = null;
       const candidate = getCandidate(message.config.modelId);
       modelId = candidate.modelId;
@@ -64,13 +64,22 @@ async function handle(message: MainToWorkerMessage): Promise<void> {
       response: evaluateRecognition(await adapter.recognize(message.request)),
     });
   } catch (error) {
+    // Retire an adapter after any failed initialization/inference. The client
+    // terminates the worker so opaque runtime allocations cannot survive retry.
+    const failed = adapter;
+    adapter = null;
+    try {
+      await failed?.dispose();
+    } catch {
+      // Preserve the original failure; worker termination is the cleanup fallback.
+    }
     send({
       type: "ERROR",
       modelId,
       key,
       code: error instanceof Error ? error.message : "UNKNOWN_FAILURE",
       message: error instanceof Error ? error.message : String(error),
-      recoverable: true,
+      recoverable: false,
     });
   }
 }

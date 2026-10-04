@@ -106,5 +106,6 @@ export type WorkerToMainMessage =
       readonly key: RevisionKey | null;
       readonly code: string;
       readonly message: string;
+      /** False requires a new worker before retrying recognition. */
       readonly recoverable: boolean;
     };

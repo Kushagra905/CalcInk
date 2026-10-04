@@ -23,7 +23,7 @@ afterEach(() => {
 });
 
 function stroke(rowId = "row-1"): InkOperation {
-  const top = rowId === "row-2" ? 160 : 0;
+  const top = ["row-1", "row-2", "row-3"].indexOf(rowId) * 160;
   const points = [{ x: 20, y: top + 40, pressure: 0.5, t: 1 }];
   return {
     kind: "stroke",
@@ -186,6 +186,123 @@ describe("document and geometry contract", () => {
 });
 
 describe("mock coordinator integration", () => {
+  it("bounds pending recognition after 200 mixed edits and routes only the newest row snapshots", async () => {
+    const mock = mockConnection();
+    await mock.ready();
+    mock.document.begin("row-1");
+    mock.document.commit([stroke()]);
+    await vi.advanceTimersByTimeAsync(350);
+    const old = mock.requests()[0];
+    for (let index = 0; index < 200; index++) {
+      const rowId = `row-${(index % 3) + 1}`;
+      const reason = index % 2 ? "erase-stroke" : "draw";
+      mock.document.begin(rowId, reason);
+      mock.document.commit(index % 2 ? [] : [stroke(rowId)]);
+      if (index % 10 === 0) {
+        mock.document.undo();
+        mock.document.redo();
+      }
+      if (index % 25 === 0) {
+        mock.document.clear();
+        mock.document.undo();
+      }
+    }
+    for (const rowId of ["row-1", "row-2", "row-3"]) {
+      mock.document.begin(rowId);
+      mock.document.commit([stroke(rowId)]);
+    }
+    await vi.advanceTimersByTimeAsync(350);
+    expect(mock.requests()).toHaveLength(1);
+    mock.receive({ type: "RESULT", response: mock.response(old) });
+    await vi.advanceTimersByTimeAsync(0);
+    expect(mock.callbacks.onResult).not.toHaveBeenCalled();
+    for (let index = 1; index <= 3; index++) {
+      const current = mock.requests()[index];
+      expect(current.epoch).toBe(mock.document.getEpoch());
+      expect(current.rowRevision).toBe(
+        mock.document.getRow(current.rowId).rowRevision,
+      );
+      expect(current.operations).toBe(
+        mock.document.getRow(current.rowId).operations,
+      );
+      mock.receive({ type: "RESULT", response: mock.response(current) });
+      await vi.advanceTimersByTimeAsync(0);
+    }
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(mock.requests()).toHaveLength(4);
+    expect(
+      new Set(
+        mock
+          .requests()
+          .slice(1)
+          .map((item) => item.rowId),
+      ).size,
+    ).toBe(3);
+    expect(mock.callbacks.onResult).toHaveBeenCalledTimes(3);
+    mock.connection.dispose();
+  });
+
+  it("recognizes replacement, undo and redo with fresh identities after whole-stroke removal", async () => {
+    const mock = mockConnection();
+    await mock.ready();
+    const original = stroke();
+    mock.document.begin("row-1");
+    mock.document.commit([original]);
+    await vi.advanceTimersByTimeAsync(350);
+    const first = mock.requests()[0];
+    mock.receive({ type: "RESULT", response: mock.response(first, "18+4×3=") });
+    await vi.advanceTimersByTimeAsync(0);
+    mock.document.begin("row-1", "erase-stroke");
+    mock.document.commit([]);
+    mock.document.begin("row-1");
+    if (original.kind !== "stroke") throw new Error("Expected stroke");
+    const replacement: InkOperation = {
+      kind: "stroke",
+      stroke: { ...original.stroke, id: "replacement" },
+    };
+    mock.document.commit([replacement]);
+    await vi.advanceTimersByTimeAsync(350);
+    const second = mock.requests()[1];
+    mock.receive({
+      type: "RESULT",
+      response: mock.response(second, "18+5×3="),
+    });
+    await vi.advanceTimersByTimeAsync(0);
+    mock.document.undo();
+    mock.document.undo();
+    await vi.advanceTimersByTimeAsync(350);
+    const restored = mock.requests()[2];
+    expect(restored.rowRevision).toBeGreaterThan(second.rowRevision);
+    expect(restored.operations[0]).toMatchObject({
+      stroke: { id: "dot-row-1" },
+    });
+    mock.receive({
+      type: "RESULT",
+      response: mock.response(second, "OBSOLETE"),
+    });
+    mock.receive({
+      type: "RESULT",
+      response: mock.response(restored, "18+4×3="),
+    });
+    await vi.advanceTimersByTimeAsync(0);
+    mock.document.redo();
+    mock.document.redo();
+    await vi.advanceTimersByTimeAsync(350);
+    const redone = mock.requests()[3];
+    expect(redone.rowRevision).toBeGreaterThan(restored.rowRevision);
+    expect(redone.operations[0]).toMatchObject({
+      stroke: { id: "replacement" },
+    });
+    mock.receive({
+      type: "RESULT",
+      response: mock.response(redone, "18+5×3="),
+    });
+    await vi.advanceTimersByTimeAsync(0);
+    expect(
+      mock.callbacks.onResult.mock.calls.map(([result]) => result.transcript),
+    ).toEqual(["18+4×3=", "18+5×3=", "18+4×3=", "18+5×3="]);
+    mock.connection.dispose();
+  });
   it("dispatches a ready row while a newer row is still debouncing", async () => {
     const mock = mockConnection();
     await mock.ready();

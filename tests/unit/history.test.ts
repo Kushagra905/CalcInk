@@ -105,3 +105,46 @@ it("bounds the actual quadratic extrema and pen width rather than the control-po
   expect(bounds.y).toBe(8);
   expect(bounds.height).toBeCloseTo(84);
 });
+
+it("isolates mutable stroke/mask inputs and shares deeply frozen history snapshots", () => {
+  const document = createDocumentStore();
+  const points = [{ x: 40, y: 40, pressure: 0.5, t: 1 }];
+  const pen = {
+    kind: "stroke" as const,
+    stroke: {
+      id: "pen",
+      rowId: "row-1",
+      width: 4,
+      points,
+      bounds: { x: 38, y: 38, width: 4, height: 4 },
+    },
+  };
+  const mask = {
+    kind: "pixel-mask" as const,
+    mask: { id: "mask", rowId: "row-1", radius: 1, points },
+  };
+  document.begin("row-1");
+  document.commit([pen, mask]);
+  const committed = document.getRow("row-1").operations;
+  points[0].x = 900;
+  points.push({ x: 800, y: 40, pressure: 0.5, t: 2 });
+  pen.stroke.width = 12;
+  pen.stroke.bounds.x = 700;
+  mask.mask.radius = 80;
+  for (const operation of committed) {
+    const ink = operation.kind === "stroke" ? operation.stroke : operation.mask;
+    expect(ink.points).toHaveLength(1);
+    expect(ink.points[0].x).toBe(40);
+    expect(Object.isFrozen(operation)).toBe(true);
+    expect(Object.isFrozen(ink)).toBe(true);
+    expect(Object.isFrozen(ink.points)).toBe(true);
+    expect(Object.isFrozen(ink.points[0])).toBe(true);
+  }
+  expect(committed[0]).toMatchObject({
+    stroke: { width: 4, bounds: { x: 38 } },
+  });
+  expect(committed[1]).toMatchObject({ mask: { radius: 1 } });
+  document.undo();
+  document.redo();
+  expect(document.getRow("row-1").operations).toBe(committed);
+});

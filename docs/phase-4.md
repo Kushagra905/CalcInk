@@ -37,8 +37,9 @@ The actual scaled notebook/OffscreenCanvas comparison allows one byte for Chromi
 antialias quantization in alpha/premultiplied color; this bound was measured on the failing
 comparison before being applied. Undo/redo and cancellation checks remain byte-exact.
 
-No genuine handwriting accuracy, physical pen/touch hardware, 60 FPS, offline caching or
-release-level performance result is claimed. The TrOCR runtime gate is recorded in phase-3.md.
+No genuine handwriting accuracy, physical pen/touch hardware, 60 FPS or release-level
+performance result is claimed. Phase 5 records subsequent ink-on offline implementation
+and verification; TrOCR remains an optional candidate with its existing runtime gate.
 
 ## Developer B: editing regressions and runtime cleanup
 
@@ -127,8 +128,9 @@ below remains an open acceptance item.
 The adapter lifecycle tests mock both model runtimes. Their test-only TrOCR license
 stub permits lifecycle coverage without weights; it supplies no license or recognition
 evidence. The optional real WASM browser test explicitly uses ink-on comparison assets
-and checks local requests, inference reuse and worker replacement. TrOCR remains selected,
-and its existing license/loading gate remains enforced in the application and worker.
+and checks local requests, inference reuse and worker replacement. TrOCR was selected at
+the time of this Phase 4 verification. The subsequent main-branch model decision selects
+ink-on, as recorded in Phase 5; TrOCR's existing license/loading gate remains enforced.
 
 The genuine handwriting demonstration `18+4×3= → 30`, erase `4` and write `5` → `33`,
 then undo/redo through both answers remains pending the chosen model's real evaluation.
@@ -136,7 +138,10 @@ The same applies to removing a handwritten equals without retaining a numeric an
 Synthetic arithmetic, editing and blank-row tests do not satisfy those recognition gates.
 Physical pen/touch, 60 FPS and real memory measurements belong to final validation.
 
-### Commit handoff
+### Original Phase 4 commit handoff
+
+Phase 4 was committed and pushed as `1154930` before the subsequent merge from main.
+The commands below record that original handoff; they are not needed again for the merge.
 
 Run these commands only after reviewing the changes. No commit or push is performed
 by the implementation agent. Explicit paths exclude the unrelated accidental file.
@@ -153,3 +158,19 @@ git push origin b/recognition-foundation
 
 The branch command should print `b/recognition-foundation`. If a check fails, fix it
 before committing. Committing/pushing this branch does not merge it into `main`.
+
+## Merge integration verification
+
+The merge of main `8606ebc` into recognition branch `1154930` preserves B's Phase 4
+cleanup and regressions alongside A's ink-on selection and verified offline preparation.
+The only textual conflict was this document; both implementation records are retained,
+and model status distinguishes the historical TrOCR choice from the current ink-on choice.
+
+On October 4, 2026, the combined working tree passed TypeScript/Biome (six existing
+warnings and one informational suggestion), all 178 unit tests, all 24 development
+Chromium tests including real ink-on reuse/reload, and all five production offline
+Chromium tests. The Pages build, lab build, production mock exclusion and whitespace
+checks passed. Offline tests cover disconnected reload/inference, initialization failure,
+missing/corrupted weights, quota recovery and explicit update activation without ink loss.
+Synthetic offline inputs decoded to duplicate-equals text and were correctly rejected;
+these results establish runtime integration, not genuine handwriting accuracy.

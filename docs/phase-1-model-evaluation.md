@@ -2,7 +2,11 @@
 
 ## Implementation status
 
-Phase 1 tooling is implemented. On October 4, 2026, the user selected **MathWriting TrOCR INT8** as the final model. `assets/model-candidates.json` records `selectedModelId: "trocr-mathwriting-int8"`; the lab and asset commands use that selection by default. TrOCR's weight-license evidence, real browser inference and genuine handwriting benchmark remain pending. No development accuracy percentage or p95 has been measured on the required 24-sample set.
+Phase 1 tooling is implemented. On October 4, 2026, the user changed the current choice
+from TrOCR to **ink-on CoMER INT8**. The catalog records `selectedModelId: "ink-on-comer-int8"`;
+notebook, lab and asset commands share this default. Local production/WASM inference works,
+including disconnected reload. No development accuracy percentage or p95 has been measured
+on the required 24 genuine samples. TrOCR remains an optional license-gated candidate.
 
 Verified on 3 October 2026:
 
@@ -18,8 +22,8 @@ Phase 2 adds strict worker arithmetic for supported adapter transcripts, retaini
 
 | Candidate | Evidence and decision |
 |---|---|
-| MathWriting TrOCR INT8 | User-selected final model. Export revision `cdc13b093c439bb894fd11d8bbd8d237ed16a257`. Both encoder and decoder use the INT8 variant; their weights are approximately 388 MB together, and the full chosen model/config set is 392,880,983 bytes. File presence does not prove browser compatibility. The export and fine-tune metadata provide no explicit license field or LICENSE file; preparation/loading remains blocked. The integration code is not runtime-verified for this candidate. |
-| ink-on CoMER INT8 | Comparison candidate using repository revision `2585994ee11fe2ed98065c555c4aae8ee9096209`, with the root Apache-2.0 license and model files in the same repository. Retain the license and attribution and review additional upstream weight conditions before final release. Local WASM initialization/inference is verified. It is not the selected final model. |
+| MathWriting TrOCR INT8 | Optional candidate; superseded by the current ink-on decision. Export revision `cdc13b093c439bb894fd11d8bbd8d237ed16a257`. Both encoder and decoder use the INT8 variant; their weights are approximately 388 MB together, and the full chosen model/config set is 392,880,983 bytes. File presence does not prove browser compatibility. The export and fine-tune metadata provide no explicit license field or LICENSE file; preparation/loading remains blocked. The integration code is not runtime-verified for this candidate. |
+| ink-on CoMER INT8 | Current selected model using repository revision `2585994ee11fe2ed98065c555c4aae8ee9096209`, with the root Apache-2.0 license and model files in the same repository. Retain the license and attribution and review additional upstream weight conditions before final release. Local WASM initialization/inference is verified. Genuine development accuracy and warmed p95 remain unmeasured. |
 
 TrOCR's upstream card reports 14.9% character error rate; ink-on reports 36.41% expression accuracy on CROHME2014. These are different metrics/data and cannot establish which model performs better on CalcInk. We do not convert CER into expression accuracy.
 
@@ -36,11 +40,9 @@ npm run assets:verify
 npm run dev:lab
 ```
 
-Open `http://127.0.0.1:5173/tools/model-lab/`. The default is TrOCR; its preparation/loading
-currently reports `MODEL_LICENSE_UNRESOLVED`. Once explicit weight-license evidence is
-recorded, use the default commands above to prepare and verify TrOCR. For the already
-verified ink-on comparison path, pass `-- ink-on-comer-int8` to both asset commands and
-select ink-on explicitly in the lab. The steps below describe that comparison path.
+Open `http://127.0.0.1:5173/tools/model-lab/`. The default is ink-on. Explicitly selecting
+TrOCR still reports `MODEL_LICENSE_UNRESOLVED`; its gate remains enforced. The following
+steps describe the active ink-on development trial.
 
 `--ignore-scripts` is sufficient for this browser lab: Node-native ONNX inference and image processing are not used. npm's packaged platform-specific Vite dependencies are used for the build.
 

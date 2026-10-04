@@ -60,7 +60,10 @@ export class InkOnAdapter implements RecognitionAdapter {
         asset.path.endsWith(`/${name}`),
       );
       if (!file) throw new Error(`ASSET_NOT_IN_MANIFEST: ${name}`);
-      return assetUrl(this.config.baseUrl, file.path);
+      // Upstream IndexedDB keys models by URL; content hashes prevent reuse across revisions.
+      const url = new URL(assetUrl(this.config.baseUrl, file.path));
+      url.searchParams.set("sha256", file.sha256);
+      return url.href;
     };
     const response = await fetch(find("vocab.json"));
     if (!response.ok) throw new Error("VOCAB_LOAD_FAILED");
@@ -92,7 +95,7 @@ export class InkOnAdapter implements RecognitionAdapter {
     report?.({
       stage: "ready",
       fraction: 1,
-      detail: "Local model initialized; offline cache is not yet implemented",
+      detail: "Local model initialized",
     });
   }
 

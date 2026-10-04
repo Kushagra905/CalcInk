@@ -4,6 +4,8 @@ import { FixturePanel } from "../dev/FixturePanel";
 import { ROWS } from "../document/rows";
 import { createDocumentStore } from "../document/store";
 import type { InkTool } from "../ink/eraser";
+import { connectOffline, type OfflineState } from "../offline/client";
+import { getCandidate, selectedModelId } from "../recognition/candidates";
 import type {
   ModelState,
   RecognitionCoordinator,
@@ -11,6 +13,7 @@ import type {
 import { Notebook, type RowFeedback } from "./Notebook";
 
 const MOCK_MODE = import.meta.env.DEV && import.meta.env.MODE === "mock";
+const selectedModel = getCandidate(selectedModelId);
 
 function emptyFeedback(): Record<string, RowFeedback> {
   return Object.fromEntries(
@@ -30,12 +33,31 @@ export function App() {
   const [capturePrompt, setCapturePrompt] = useState("");
   const [history, setHistory] = useState(document.getHistoryState);
   const coordinator = useRef<RecognitionCoordinator | null>(null);
+  const [offline, setOffline] = useState<OfflineState>({ kind: "unavailable" });
+  const [updateAvailable, setUpdateAvailable] = useState(false);
+  const offlineConnection = useRef<ReturnType<typeof connectOffline> | null>(
+    null,
+  );
   const capacity = document.getCapacityState();
 
   useEffect(
     () => document.subscribe(() => setHistory(document.getHistoryState())),
     [document],
   );
+
+  useEffect(() => {
+    if (!import.meta.env.PROD) return;
+    const connection = connectOffline(
+      setOffline,
+      () => setUpdateAvailable(true),
+      () => !document.getHistoryState().canClear,
+    );
+    offlineConnection.current = connection;
+    return () => {
+      offlineConnection.current = null;
+      connection.dispose();
+    };
+  }, [document]);
 
   useEffect(() => {
     function shortcut(event: KeyboardEvent) {
@@ -219,6 +241,14 @@ export function App() {
         <span>Three rows. Plenty of possibilities.</span>
         <span>Your ink stays in this tab; reloading clears it.</span>
       </div>
+      {import.meta.env.PROD && (
+        <p className="model-attribution">
+          Recognition uses {selectedModel.name}.{" "}
+          <a href="./model-attribution.txt">Model attribution</a>
+          {" · "}
+          <a href="./model-license.txt">{selectedModel.license.id} license</a>
+        </p>
+      )}
       {capacity.full && (
         <p role="status" className="input-error">
           Page capacity reached. Use the stroke eraser, Clear or Undo to make
@@ -229,6 +259,59 @@ export function App() {
         <a className="capture-link" href="#capture-title">
           Return to sample controls ↓
         </a>
+      )}
+      {import.meta.env.PROD && (
+        <section className="offline-panel" aria-label="Offline availability">
+          <div role="status" data-testid="offline-status">
+            {offline.kind === "cached" ? (
+              model.kind === "ready" ? (
+                "Ready offline"
+              ) : (
+                "Offline files verified. Waiting for recognition to initialize."
+              )
+            ) : offline.kind === "preparing" ? (
+              <>
+                <progress
+                  max="1"
+                  value={offline.progress}
+                  aria-label="Offline preparation"
+                />{" "}
+                {offline.message}
+              </>
+            ) : offline.kind === "error" ? (
+              offline.message
+            ) : (
+              "Offline storage is unavailable. Keep this tab online."
+            )}
+          </div>
+          {offline.kind === "error" && (
+            <button
+              type="button"
+              className="button"
+              onClick={() => {
+                offlineConnection.current?.retry();
+                if (model.kind === "error") coordinator.current?.retry();
+              }}
+            >
+              Retry offline preparation
+            </button>
+          )}
+          {updateAvailable && (
+            <div className="offline-update">
+              <span>
+                Update available. Finish or clear your ink before reloading.
+              </span>
+              <button
+                type="button"
+                className="button"
+                disabled={history.canClear}
+                onClick={() => offlineConnection.current?.update()}
+              >
+                Reload to update
+              </button>
+            </div>
+          )}
+        </section>
       )}
       <div className="model-message" role="status">
         {heldOutCapture &&

@@ -1,8 +1,13 @@
 # Phase 3: reactive recognition and inline results
 
+The current selected model is ink-on CoMER INT8, following the user's later decision.
+The notebook and production offline build run real ink-on locally. Its genuine handwritten
+arithmetic/edit demonstration and 24-sample evaluation remain pending. TrOCR's licensing
+gate remains on that optional candidate; it no longer blocks the selected application.
+
 ## Implementation
 
-- Production `connect.ts` uses the catalog's selected TrOCR candidate. The lab and asset
+- Production `connect.ts` uses the catalog's selected candidate. The lab and asset
   commands use that same choice. The existing license gate remains enforced.
 - Notebook and development fixtures use one coordinator, TrialClient and nested worker
   protocol. The obsolete duplicate flat protocol/model adapter placeholders were removed;
@@ -61,8 +66,8 @@ npm run build:lab
 npm run verify:production
 ```
 
-The optional real-model browser test needs comparison assets and does not demonstrate
-TrOCR recognition:
+The optional real-model browser test uses the selected ink-on assets and checks
+the optional TrOCR licensing gate:
 
 ```powershell
 npm run assets:prepare -- ink-on-comer-int8
@@ -72,18 +77,8 @@ npm run test:e2e -- --workers=2
 Remove-Item Env:\CALCINK_MODEL_TEST
 ```
 
-### Commit boundary
-
-The assistant leaves these changes uncommitted on the existing recognition branch.
-Review and stage only these files; the unrelated accidental untracked file stays excluded.
-
-```powershell
-git add -- src/recognition/coordinator.ts src/recognition/trial-client.ts src/app/Notebook.tsx src/dev/mockCoordinator.ts src/dev/mock.worker.ts tests/unit/foundation.test.ts tests/unit/trial-client.test.ts tests/unit/blank-ink.test.ts tests/e2e/results-erasers.spec.ts README.md docs/phase-3.md
-git diff --cached --check
-git --no-pager diff --cached --stat
-git commit -m "feat(recognition): complete phase 3 scheduling and recovery"
-git push origin b/recognition-foundation
-```
+These changes were committed as `71133b3` and merged into `main` through PR #6.
+They are preserved alongside the ink-on selection and Phase 5 offline implementation.
 
 ## Developer B verification — 4 October 2026
 
@@ -93,7 +88,7 @@ git push origin b/recognition-foundation
   local ink-on WASM smoke test, normalized LaTeX display, controlled stale replies,
   automatic timeout recovery and manual retry with ink/history preservation.
 - Notebook and model-lab builds passed; production mock/capture exclusion passed.
-- Working-tree whitespace checks passed. No commit, staging or push was performed.
+- Working-tree whitespace checks passed before Developer B's commit.
 
 An earlier four-worker run hit a timeout in the existing multi-device export test; it
 passed in the final two-worker run. The new LaTeX regression also uncovered a real
@@ -101,10 +96,10 @@ Windows dev-worker import failure, fixed by URL-safe fixture transport. The exis
 stale-reply browser check now controls reply release instead of relying on a brief status window.
 
 These checks establish engineering integration, not real handwriting accuracy, a 60 FPS
-measurement, offline readiness, or TrOCR inference. The genuine selected-model exit
-demonstration remains pending for the reason below.
+measurement, offline readiness, or TrOCR inference. The genuine selected ink-on exit
+demonstration remains pending handwriting validation.
 
-## Earlier integration evidence and remaining requirement
+## Earlier TrOCR-selected milestone evidence
 
 TypeScript/Biome, 56 unit tests, the full 21-test Chromium suite, both builds and local
 comparison asset verification passed on October 4, 2026. Browser checks cover inline
@@ -113,15 +108,26 @@ clear/undo and readiness while drawing. Unit checks exercise 100 queued replacem
 fresh epochs, ten-second timeouts, the restart limit, disposal, foreign errors and tampered
 weight manifests. Automated fixtures remain clearly labeled and are not handwriting evidence.
 
-The real-model browser test initializes and runs ink-on locally without external requests;
-it also verifies that the selected TrOCR default remains blocked. It does not verify TrOCR
+At that earlier milestone, the real-model browser test initialized and ran ink-on locally
+without external requests; it also verified that the then-selected TrOCR default remained
+blocked. It did not verify TrOCR
 inference or accuracy. TrOCR asset preparation currently fails with MODEL_LICENSE_UNRESOLVED.
 The genuine TrOCR 18+4×3= → 30 demonstration, handwriting benchmark, latency/resource
-measurements and license evidence remain pending. Phase 3's engineering is implemented;
-its real TrOCR exit demonstration has not been completed.
+measurements and license evidence were pending. TrOCR was subsequently replaced by ink-on;
+these observations describe the earlier selection rather than the current exit requirement.
 
 A separate production-build Chromium check passed: the real notebook shows the selected
 TrOCR gate, contains no mock UI, accepts ink and preserves its exact bitmap on retry.
 There were no browser errors or external requests. The temporary preview/browser were stopped.
 
-Offline readiness/deployment remains Phase 5; physical-device/performance QA remains Phase 6.
+## Current ink-on milestone
+
+The 56 unit tests and 21 model-enabled development browser tests passed again after the
+selection change. Five additional production offline checks passed with real ink-on,
+including a fresh disconnected reload and input-dependent model transcripts.
+Two synthetic engineering drawings decoded as `1==` and `4==`; the arithmetic parser
+rejected their duplicate equals signs. These are measured failures, not valid calculations
+or human handwriting evaluation. The release demonstration remains pending genuine inputs.
+
+Phase 5 records cache/retry/update implementation and its local verification.
+Public deployment acceptance and physical-device/performance QA remain pending.

@@ -2,11 +2,14 @@
 
 ## Status
 
-Developer A's release checks merged into main `515301d`. Developer B adds the
+Developer A's release checks merged into main `515301d`. Developer B added the
 [final handwriting evaluator, report verifier and runtime measurements](phase-6-recognition.md)
-on `b/recognition-foundation`. Public HTTP/hash and disconnected browser checks
-have now passed in Chromium and Edge. Joint Phase 6 acceptance still requires
-physical-device results and the genuine held-out benchmark.
+in PR #11, merged into main `16efb8a`. Its build, deployment and public verification
+checks passed. Public HTTP/hash and disconnected browser checks have passed in
+Chromium and Edge. The user reports genuine evaluation and physical checks performed;
+their recorded results are still needed for review. The
+[joint release decision](joint-release-decision.md) accepts engineering integration
+and holds final acceptance pending that evidence and Phase 7 completion.
 
 ## Changes
 

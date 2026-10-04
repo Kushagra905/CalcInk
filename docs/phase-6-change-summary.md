@@ -3,8 +3,11 @@
 ## Status
 
 Implemented on `b/recognition-foundation` after the user merged main `515301d`.
-Changes are uncommitted. Final handwriting acceptance remains open because no
-genuine held-out export was supplied. The selected model stays ink-on CoMER INT8.
+Committed as `0ce4c2e`, then merged through PR #11 into main `16efb8a`. GitHub's
+build, deployment and public verification checks passed. Final handwriting
+acceptance remains open pending review of the user's reported manual evaluation
+results. See [the joint release decision](joint-release-decision.md).
+The selected model stays ink-on CoMER INT8.
 
 ## Changed files and code
 
@@ -52,7 +55,8 @@ not be staged with this work.
 
 Browser tests used separately started previews on Windows. The new external-server
 flag supports the same approach through the normal npm test commands. The amended
-remote workflows have been linted locally but will execute after the user pushes.
+remote workflows subsequently passed for the merged Phase 6 candidate; run links
+are recorded in the joint release decision.
 
 ## Remaining acceptance
 
@@ -62,7 +66,7 @@ accuracy/latency on the frozen build in both browsers. Physical mouse, touchscre
 stylus and genuine arithmetic after public offline reload also need user evidence.
 No genuine accuracy percentage is claimed by this implementation.
 
-## Commit manually
+## Original implementation commit commands (already completed)
 
 Inspect `git diff` and `git status`, then stage only these paths:
 

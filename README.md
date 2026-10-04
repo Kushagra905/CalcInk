@@ -142,6 +142,11 @@ runner, not universal hardware guarantees. See [Phase 6](docs/phase-6.md),
 [measured performance](docs/performance.md) and [model acceptance](docs/model-evaluation.md).
 Physical mouse/touch/stylus checks and genuine handwriting evaluation remain required.
 
+The [joint release decision](docs/joint-release-decision.md) records the merged
+Phase 6 candidate, successful CI/deployment and the remaining evidence gates.
+The user reports manual checks performed; final acceptance awaits their results
+and the Phase 7 reproducibility/submission work.
+
 ## Integration with Developer B
 
 See [the Phase 0 contract](docs/phase-0.md). The document store owns epoch/row revisions;

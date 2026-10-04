@@ -55,6 +55,38 @@ test("real local WASM worker initializes, infers and evaluates without remote re
   ]).toContain(result.outcome.kind);
   for (const timing of Object.values(result.timing))
     expect(Number.isFinite(timing)).toBe(true);
+  await expect(page.locator("#recognize")).toBeEnabled();
+  const worker = page.workers()[0];
+  expect(page.workers()).toHaveLength(1);
+  const previous = await page.locator("#result").innerText();
+  await page.locator("#recognize").click();
+  await expect(page.locator("#result")).not.toHaveText(previous, {
+    timeout: 30000,
+  });
+  await expect(page.locator("#recognize")).toBeEnabled();
+  expect(JSON.parse(await page.locator("#result").innerText()).transcript).toBe(
+    result.transcript,
+  );
+  expect(page.workers()).toEqual([worker]);
+
+  await page.locator("#unload").click();
+  await expect.poll(() => page.workers().length).toBe(0);
+  await expect(page.locator("#recognize")).toBeDisabled();
+  await page.locator("#load").click();
+  await expect(page.locator("#status")).toContainText("Local model ready", {
+    timeout: 60000,
+  });
+  expect(page.workers()).toHaveLength(1);
+  expect(page.workers()[0]).not.toBe(worker);
+  const beforeReload = await page.locator("#result").innerText();
+  await page.locator("#recognize").click();
+  await expect(page.locator("#result")).not.toHaveText(beforeReload, {
+    timeout: 30000,
+  });
+  await expect(page.locator("#recognize")).toBeEnabled();
+  expect(JSON.parse(await page.locator("#result").innerText()).transcript).toBe(
+    result.transcript,
+  );
   await page.locator("#split").selectOption("held-out");
   await expect(page.locator("#load")).toBeDisabled();
   await expect(page.locator("#recognize")).toBeDisabled();

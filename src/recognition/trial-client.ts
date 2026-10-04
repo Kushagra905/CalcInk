@@ -249,6 +249,10 @@ export class TrialClient {
       key.rowRevision !== request.rowRevision
     )
       return;
+    if (message.type === "ERROR" && !message.recoverable) {
+      this.fail(new Error(message.message), message.modelId);
+      return;
+    }
     clearTimeout(item.timer);
     this.pending.delete(key.requestId);
     if (message.type === "RESULT") item.resolve(message.response);

@@ -11,5 +11,5 @@ export interface RecognitionAdapter {
 
   recognize(request: RecognitionRequest): Promise<RecognitionResponse>;
 
-  dispose(): void;
+  dispose(): void | Promise<void>;
 }

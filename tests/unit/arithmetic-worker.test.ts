@@ -85,6 +85,45 @@ afterEach(() => {
 });
 
 describe("trial worker arithmetic integration", () => {
+  it("disposes a failed adapter and marks its matching runtime error fatal", async () => {
+    await ready();
+    runtime.recognize.mockRejectedValue(new Error("RUNTIME_FAILED"));
+    send({ type: "RECOGNIZE", request });
+    await vi.waitFor(() =>
+      expect(replies()).toContainEqual(
+        expect.objectContaining({
+          type: "ERROR",
+          key: { epoch: 1, rowId: "row-1", rowRevision: 2, requestId: 3 },
+          modelId: candidate.modelId,
+          code: "RUNTIME_FAILED",
+          recoverable: false,
+        }),
+      ),
+    );
+    expect(runtime.dispose).toHaveBeenCalledTimes(1);
+    send({ type: "RECOGNIZE", request: { ...request, requestId: 4 } });
+    await vi.waitFor(() =>
+      expect(replies()).toContainEqual(
+        expect.objectContaining({ type: "ERROR", code: "ADAPTER_NOT_READY" }),
+      ),
+    );
+    expect(runtime.recognize).toHaveBeenCalledTimes(1);
+  });
+  it("cleans up an adapter whose initialization fails", async () => {
+    runtime.initialize.mockRejectedValue(new Error("SESSION_INIT_FAILED"));
+    send(init);
+    await vi.waitFor(() =>
+      expect(replies()).toContainEqual(
+        expect.objectContaining({
+          type: "ERROR",
+          key: null,
+          code: "SESSION_INIT_FAILED",
+        }),
+      ),
+    );
+    expect(runtime.dispose).toHaveBeenCalledTimes(1);
+    expect(replies().some((message) => message.type === "READY")).toBe(false);
+  });
   it("runs a raw model result through arithmetic before replying", async () => {
     await ready();
     const recognized: RecognitionResponse = {

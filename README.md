@@ -91,6 +91,10 @@ partial brush-width region. Eraser size is the brush diameter in logical page un
 The pixel mask only affects earlier ink; drawing afterward stays visible. Eraser previews
 are provisional, cancellation restores committed ink, and each completed erase is one
 undoable gesture. At page capacity, stroke erasing, Clear and Undo remain available.
+Phase 4 also checks immutable edit snapshots and bounded recognition queues during
+repeated edits. Adapter initialization/disposal is coordinated, temporary preprocessing
+canvases are cleared, and a failed model runtime is terminated before retry creates a
+new worker. Ink and history remain available during recovery.
 See [Phase 3 integration](docs/phase-3.md) and [Phase 4 editing](docs/phase-4.md).
 
 ## Checks

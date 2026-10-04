@@ -14,6 +14,8 @@ export class InkOnAdapter implements RecognitionAdapter {
   private engine: InferenceEngine | null = null;
   private vocab: Vocab | null = null;
   private disposed = false;
+  private loading: Promise<void> | null = null;
+  private recognizing = false;
 
   constructor(private readonly config: RecognitionConfig) {
     this.modelId = config.modelId;
@@ -23,7 +25,24 @@ export class InkOnAdapter implements RecognitionAdapter {
     report?: (progress: AdapterProgress) => void,
   ): Promise<void> {
     if (this.disposed) throw new Error("ADAPTER_DISPOSED");
+    if (this.engine) return;
+    if (this.loading) return this.loading;
+    this.loading = this.load(report);
+    try {
+      await this.loading;
+    } catch (error) {
+      this.dispose();
+      throw error;
+    } finally {
+      this.loading = null;
+    }
+  }
+
+  private async load(
+    report?: (progress: AdapterProgress) => void,
+  ): Promise<void> {
     await verifyLocalAssets(this.config.manifest, this.config.baseUrl, report);
+    if (this.disposed) throw new Error("ADAPTER_DISPOSED");
     report?.({
       stage: "loading",
       fraction: null,
@@ -32,6 +51,7 @@ export class InkOnAdapter implements RecognitionAdapter {
     // Import engine first: upstream sets numThreads on import. Override it afterward.
     const { InferenceEngine } = await import("ink-on/core");
     const ort = await import("onnxruntime-web");
+    if (this.disposed) throw new Error("ADAPTER_DISPOSED");
     ort.env.wasm.numThreads = 1;
     ort.env.wasm.proxy = false;
     ort.env.wasm.wasmPaths = assetUrl(this.config.baseUrl, "runtime/ink-on/");
@@ -47,22 +67,31 @@ export class InkOnAdapter implements RecognitionAdapter {
     };
     const response = await fetch(find("vocab.json"));
     if (!response.ok) throw new Error("VOCAB_LOAD_FAILED");
-    this.vocab = (await response.json()) as Vocab;
+    const vocab = (await response.json()) as Vocab;
+    if (this.disposed) throw new Error("ADAPTER_DISPOSED");
     const required = [..."0123456789", "+", "-", ".", "=", "\\times", "\\div"];
-    if (required.some((symbol) => this.vocab!.word2idx[symbol] === undefined))
+    if (required.some((symbol) => vocab.word2idx[symbol] === undefined))
       throw new Error("REQUIRED_SYMBOL_MISSING");
-    this.engine = new InferenceEngine({
+    const engine = new InferenceEngine({
       encoderUrl: find("encoder_int8.onnx"),
       decoderUrl: find("decoder_int8.onnx"),
       beamWidth: 3,
       maxDecodeSteps: this.config.maxOutputTokens,
       executionProvider: "wasm",
     });
-    await this.engine.init();
-    if (this.disposed) {
-      this.engine.dispose();
-      throw new Error("ADAPTER_DISPOSED");
+    try {
+      await engine.init();
+      if (this.disposed) throw new Error("ADAPTER_DISPOSED");
+    } catch (error) {
+      try {
+        engine.dispose();
+      } catch {
+        // Keep the load failure; the client also terminates the failed worker.
+      }
+      throw error;
     }
+    this.engine = engine;
+    this.vocab = vocab;
     report?.({
       stage: "ready",
       fraction: 1,
@@ -73,6 +102,32 @@ export class InkOnAdapter implements RecognitionAdapter {
   async recognize(request: RecognitionRequest): Promise<RecognitionResponse> {
     if (this.disposed) throw new Error("ADAPTER_DISPOSED");
     if (!this.engine || !this.vocab) throw new Error("ADAPTER_NOT_READY");
+    if (this.recognizing) throw new Error("ADAPTER_BUSY");
+    const engine = this.engine;
+    const vocab = this.vocab;
+    this.recognizing = true;
+    try {
+      return await this.infer(request, engine, vocab);
+    } catch (error) {
+      this.dispose();
+      throw error;
+    } finally {
+      this.recognizing = false;
+      if (this.disposed) {
+        try {
+          engine.dispose();
+        } catch {
+          // Keep the inference failure; the client terminates this worker.
+        }
+      }
+    }
+  }
+
+  private async infer(
+    request: RecognitionRequest,
+    engine: InferenceEngine,
+    vocab: Vocab,
+  ): Promise<RecognitionResponse> {
     const start = performance.now();
     const raster = rasterizeRow(request.operations, request.rowId);
     const key = {
@@ -94,10 +149,15 @@ export class InkOnAdapter implements RecognitionAdapter {
           evaluateMs: 0,
         },
       };
-    const input = prepareComer(raster.canvas);
+    let input: ReturnType<typeof prepareComer>;
+    try {
+      input = prepareComer(raster.canvas);
+    } finally {
+      raster.canvas.width = raster.canvas.height = 0;
+    }
     const preprocessMs = performance.now() - start;
     const inferStart = performance.now();
-    const result = await this.engine.recognize(input, this.vocab, "number");
+    const result = await engine.recognize(input, vocab, "number");
     if (this.disposed) throw new Error("ADAPTER_DISPOSED");
     return {
       ...key,
@@ -120,8 +180,9 @@ export class InkOnAdapter implements RecognitionAdapter {
   }
 
   dispose(): void {
+    if (this.disposed) return;
     this.disposed = true;
-    this.engine?.dispose();
+    if (!this.recognizing) this.engine?.dispose();
     this.engine = null;
     this.vocab = null;
   }

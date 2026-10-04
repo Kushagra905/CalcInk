@@ -2,7 +2,7 @@
 
 ## Scope and architecture
 
-Implemented: expression normalization, full grammar validation, decimal evaluation, result formatting, worker postprocessing, and readable model-lab outcomes. Developer A still owns drawing/history. The real model is not yet connected to the notebook; debounce, queue replacement, stale-result scheduling, and inline answers belong to Phase 3.
+Implemented: expression normalization, full grammar validation, decimal evaluation, result formatting, worker postprocessing, and readable model-lab outcomes. Developer A owns drawing/history. The merged notebook connects through the shared TrialClient/protocol and reactive coordinator. Phases 3/4 scheduling, inline answers and erasers are already present on main; this merge integrates the strict arithmetic pipeline with them.
 
 ```text
 trial-worker → local adapter → raw transcription
@@ -92,25 +92,17 @@ npm run test:unit
 npm run build
 npm run build:lab
 npm run verify:production
-npm run assets:verify
+npm run assets:verify -- ink-on-comer-int8
 ```
 
-Run the lab with `npm run dev:lab`; prepare assets first if absent. Write an expression ending in `=`, initialize the candidate, and click Recognize. Inspect raw text alongside the normalized text and outcome. A correct calculator cannot compensate for an incorrect transcription. No accuracy, p95, offline-readiness, final selection, or inline notebook-answer claim follows from these checks.
+Run the lab with `npm run dev:lab`; prepare assets first if absent. Write an expression ending in `=`, initialize the candidate, and click Recognize. Inspect raw text alongside the normalized text and outcome. A correct calculator cannot compensate for an incorrect transcription. These checks do not establish handwriting accuracy, p95 or offline readiness. The selected TrOCR candidate remains blocked by unresolved weight-license evidence. Notebook scheduling and inline results are described in `phase-3.md`. Use `-- ink-on-comer-int8` with asset preparation/verification for the available comparison model.
 
-The implementation is left uncommitted. From the clean starting main branch, move these edits onto a feature branch before staging:
+Phase 2 is committed on `b/recognition-foundation`. This merge combines the latest main
+with that branch. Resolve and verify first, then stage only the intended merge files,
+commit the merge and push the same branch. Existing PR #5 updates automatically.
+Avoid `git add .`: an unrelated accidental untracked file exists locally.
 
-```powershell
-git switch -c b/arithmetic-pipeline
-git add -- .github/workflows/ci.yml package.json package-lock.json README.md src/math src/recognition/normalize.ts src/recognition/evaluate.ts src/recognition/protocol.ts src/recognition/contracts.ts src/recognition/trial-worker.ts src/recognition/adapters/trocr.ts tools/model-lab tests/unit/arithmetic.test.ts tests/unit/arithmetic-worker.test.ts docs/phase-2-arithmetic.md docs/phase-1-model-evaluation.md docs/recognition-foundation.md
-git diff --cached --stat
-git diff --cached --check
-git commit -m "feat(math): implement strict worker arithmetic pipeline"
-git push -u origin b/arithmetic-pipeline
-```
-
-If the branch already exists, use `git switch b/arithmetic-pipeline` rather than creating it again. Review the staged changes before committing. Generated assets/build outputs stay ignored.
-
-## Local verification record — 4 October 2026
+## Phase 2 verification before this merge — 4 October 2026
 
 - TypeScript and Biome check: passed (existing nonblocking lint warnings).
 - All 120 unit tests across six files passed, including 83 new Phase 2 cases.
@@ -118,4 +110,29 @@ If the branch already exists, use `git switch b/arithmetic-pipeline` rather than
 - All seven model/runtime files verified; production verification passed.
 - Real browser worker initialized ink-on and ran inference on disposable, unsaved test ink. Its raw output was `\frac { 1 } { 1 . 1 }`; the evaluator returned `unrecognized / UNSUPPORTED_COMMAND`, normalized text `null`, and a readable unsupported-notation status. Bounds and all three timing fields were present; no browser error logs were recorded. This is integration evidence, not handwriting-accuracy evidence or a real-sample benchmark.
 - The existing notebook browser suite was not rerun for this phase: its connector and rendering behavior were unchanged. Worker arithmetic is covered by the unit orchestration tests and the separate real-browser smoke check.
-- TrOCR inference remains blocked by the missing weight-license evidence. Neither the model-selection gate nor offline/inline notebook integration is complete.
+- TrOCR inference remains blocked by the missing weight-license evidence. Offline readiness and measured model validation remain incomplete.
+
+## Merge integration and verification — 4 October 2026
+
+The merge retains the modular strict evaluator and raw/normalized transcript separation,
+while adopting main's shared contracts, TrialClient, notebook coordinator, history, captures,
+inline results and erasers. The development worker now supplies its raw transcript explicitly
+alongside the evaluator's normalized text. The real worker invokes the adapter once per
+request and then evaluates the response; a regression assertion checks that call count.
+The arithmetic suite also retains main's additional valid, malformed and unsupported cases.
+
+The lab preserves main's selected-model default, held-out recognition guards, busy guards,
+and separate sample exports while adding normalized text, readable outcomes and explicit
+OffscreenCanvas compatibility feedback. TrOCR remains selected and license-blocked;
+the optional real-model check explicitly uses ink-on comparison assets.
+
+- TypeScript/Biome check passed with 10 existing lint warnings and one informational finding.
+- 146 unit tests across nine files passed.
+- All 21 Chromium browser tests passed, including the asset-dependent local WASM smoke test,
+  guided capture isolation, history, stale-result rejection, inline outcomes and both erasers.
+- Notebook and model-lab production builds passed.
+- Production mock/capture exclusion passed; all seven ink-on model/runtime files verified.
+- Conflict-marker scan and working-tree whitespace check were clean.
+
+No real handwriting accuracy, representative latency or offline-readiness claim follows
+from this merge validation. The merge is left for the user to stage, commit and push.

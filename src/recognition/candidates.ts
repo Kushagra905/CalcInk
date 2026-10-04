@@ -21,6 +21,7 @@ export interface ModelCandidate {
 }
 
 export const candidates = catalog.candidates as readonly ModelCandidate[];
+export const selectedModelId = catalog.selectedModelId;
 
 export function getCandidate(modelId: string): ModelCandidate {
   const candidate = candidates.find((item) => item.modelId === modelId);

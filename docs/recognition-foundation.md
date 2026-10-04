@@ -5,12 +5,15 @@
 Shared types, adapter interface, and mock adapter are implemented.
 
 Phase 1 adds a local real-model trial worker, asset verification, loading state,
-and handwriting capture/benchmark tooling. Final model selection still requires
-the team's measured development samples. See `phase-1-model-evaluation.md`.
+and handwriting capture/benchmark tooling. The user selected MathWriting TrOCR INT8
+as the final model on October 4, 2026. Weight-license evidence and measured development
+validation remain pending. See `phase-1-model-evaluation.md`.
 
-Phase 2 adds strict normalization, decimal evaluation and calculation outcomes
-inside the trial worker. See `phase-2-arithmetic.md`. Reactive notebook
-recognition scheduling and offline caching are pending later phases.
+Phase 2 strict worker arithmetic and Phase 3 reactive recognition scheduling are implemented.
+Arithmetic retains raw transcripts, exposes normalized text separately, and preserves decoder-limit failures.
+See `phase-2-arithmetic.md` for grammar, resource bounds and decimal formatting.
+Notebook and lab now share TrialClient and the nested INIT/RECOGNIZE protocol.
+Phase 4 adds both erasers. Offline caching is pending Phase 5.
 
 ## Ownership
 
@@ -56,7 +59,7 @@ Production adapter selection must reject mock mode before deployment.
 Recognition responses preserve epoch, rowId, rowRevision,
 and requestId, and include modelId.
 
-The future coordinator must validate all five before applying
+TrialClient and the notebook coordinator validate all five before applying
 a response or request-specific error.
 
 ## Verification

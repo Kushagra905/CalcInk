@@ -4,10 +4,12 @@ export type InkContext =
   | CanvasRenderingContext2D
   | OffscreenCanvasRenderingContext2D;
 
-function paintPath(
+export function drawPath(
   context: InkContext,
   points: readonly Point[],
   width: number,
+  from = 1,
+  finish = true,
 ): void {
   if (!points.length) return;
   context.lineWidth = width;
@@ -15,12 +17,20 @@ function paintPath(
   context.lineJoin = "round";
   context.beginPath();
   if (points.length === 1) {
+    if (!finish) return;
     context.arc(points[0].x, points[0].y, width / 2, 0, Math.PI * 2);
     context.fill();
     return;
   }
-  context.moveTo(points[0].x, points[0].y);
-  for (let index = 1; index < points.length - 1; index++) {
+  const start =
+    from <= 1
+      ? points[0]
+      : {
+          x: (points[from - 1].x + points[from].x) / 2,
+          y: (points[from - 1].y + points[from].y) / 2,
+        };
+  context.moveTo(start.x, start.y);
+  for (let index = from; index < points.length - 1; index++) {
     const point = points[index];
     const next = points[index + 1];
     context.quadraticCurveTo(
@@ -30,8 +40,10 @@ function paintPath(
       (point.y + next.y) / 2,
     );
   }
-  const last = points[points.length - 1];
-  context.lineTo(last.x, last.y);
+  if (finish) {
+    const last = points[points.length - 1];
+    context.lineTo(last.x, last.y);
+  }
   context.stroke();
 }
 
@@ -47,7 +59,7 @@ export function replayInk(
   for (const operation of operations) {
     context.globalCompositeOperation =
       operation.kind === "stroke" ? "source-over" : "destination-out";
-    paintPath(
+    drawPath(
       context,
       operation.kind === "stroke"
         ? operation.stroke.points

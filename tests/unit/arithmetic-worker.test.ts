@@ -110,6 +110,7 @@ describe("trial worker arithmetic integration", () => {
         }),
       }),
     );
+    expect(runtime.recognize).toHaveBeenCalledTimes(1);
   });
   it("retains decoder-limit errors instead of calculating a plausible prefix", async () => {
     await ready();

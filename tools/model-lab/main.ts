@@ -6,7 +6,7 @@ import type { BenchmarkEntry } from "../../src/recognition/benchmark";
 import { summarizeBenchmark } from "../../src/recognition/benchmark";
 import { replayInk } from "../../src/ink/replay";
 import { describeOutcome } from "../../src/math/status";
-import { candidates, getCandidate } from "../../src/recognition/candidates";
+import { candidates, getCandidate, selectedModelId } from "../../src/recognition/candidates";
 import { TrialClient } from "../../src/recognition/trial-client";
 import { sampleCases } from "./cases";
 import { parseFixtures } from "./fixtures";
@@ -36,10 +36,12 @@ try { fixtures = [...parseFixtures(JSON.parse(localStorage.getItem(storageKey) ?
 catch { element("capture-status").textContent = "Stored samples could not be read. Import a previous export if available."; }
 
 function syncControls(): void {
-  element<HTMLButtonElement>("load").disabled = loading.kind === "loading" || busy;
+  const heldOut = split.value === "held-out";
+  element<HTMLButtonElement>("load").disabled = heldOut || loading.kind === "loading" || busy;
   model.disabled = loading.kind === "loading" || busy;
-  element<HTMLButtonElement>("recognize").disabled = loading.kind !== "ready" || busy || !!active || !operations.length;
-  element<HTMLButtonElement>("benchmark").disabled = loading.kind !== "ready" || busy || !!active;
+  element<HTMLButtonElement>("recognize").disabled = heldOut || loading.kind !== "ready" || busy || !!active || !operations.length;
+  element<HTMLButtonElement>("benchmark").disabled = heldOut || loading.kind !== "ready" || busy || !!active;
+  writer.disabled = split.disabled = sample.disabled = busy;
 }
 const client = new TrialClient((state) => {
   loading = state;
@@ -55,7 +57,7 @@ const client = new TrialClient((state) => {
 });
 
 for (const candidate of candidates) model.add(new Option(candidate.name, candidate.modelId));
-model.value = "ink-on-comer-int8";
+model.value = selectedModelId;
 function showLicense(): void {
   const candidate = getCandidate(model.value);
   element("license").textContent = `${candidate.license.id ?? "License unresolved"} · ${(candidate.files.reduce((sum, item) => sum + item.bytes, 0) / 1_000_000).toFixed(2)} MB model assets. ${candidate.license.note}`;
@@ -85,7 +87,9 @@ function populateSamples(): void {
   for (const item of sampleCases.filter((item) => item.writer === writer.value && item.split === split.value)) sample.add(new Option(`${item.id} · ${item.expected}`, item.id));
   restoreSample();
 }
-writer.onchange = populateSamples; split.onchange = populateSamples; sample.onchange = restoreSample;
+writer.onchange = populateSamples;
+split.onchange = () => { client.unload(); populateSamples(); };
+sample.onchange = restoreSample;
 function counts(): void {
   const dev = fixtures.filter((item) => item.sampleId.startsWith("dev-")).length;
   element("counts").textContent = `Saved: ${dev}/24 development · ${fixtures.length - dev}/50 held out. Export samples before clearing browser storage.`;
@@ -142,13 +146,14 @@ element("save").onclick = () => {
     element("capture-status").textContent = `Saved ${sample.value}.`; counts();
   } catch (error) { element("capture-status").textContent = String(error); }
 };
-element("load").onclick = async () => { try { await client.load(getCandidate(model.value), baseUrl); } catch { /* loading state contains actionable error */ } };
+element("load").onclick = async () => { if (split.value === "held-out") return; try { await client.load(getCandidate(model.value), baseUrl); } catch { /* loading state contains actionable error */ } };
 element("unload").onclick = () => client.unload();
 
 async function infer(ink: readonly InkOperation[], rowRevision: number): Promise<RecognitionResponse> {
   return client.recognize({ epoch: 0, rowId: "row-1", rowRevision, operations: ink });
 }
 element("recognize").onclick = async () => {
+  if (split.value === "held-out" || active || busy) return;
   const capturedRevision = revision;
   busy = true; syncControls();
   try {
@@ -159,7 +164,7 @@ element("recognize").onclick = async () => {
 };
 
 element("benchmark").onclick = async () => {
-  if (active) return;
+  if (active || busy || split.value === "held-out") return;
   busy = true; syncControls(); report = null; element<HTMLButtonElement>("export-report").disabled = true;
   const candidate = getCandidate(model.value);
   const cases = sampleCases.filter((item) => item.split === "development");
@@ -191,7 +196,7 @@ function download(name: string, content: unknown): void {
   const link = document.createElement("a"); link.href = url; link.download = name; link.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
-element("export-samples").onclick = () => download("calcink-handwriting-samples.json", { schemaVersion: 1, samples: fixtures });
+element("export-samples").onclick = () => download(`calcink-${split.value}.json`, { schemaVersion: 1, samples: fixtures.filter((item) => sampleCases.some((entry) => entry.id === item.sampleId && entry.split === split.value)) });
 element("export-report").onclick = () => { if (report) download(`calcink-${model.value}-development-report.json`, report); };
 element<HTMLInputElement>("import-samples").onchange = async (event) => {
   try {

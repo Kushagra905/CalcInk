@@ -248,6 +248,19 @@ h1 {
 .row-feedback.error {
   color: #a34332;
 }
+.row-feedback > span:last-child {
+  display: flex;
+  gap: 10px;
+  min-width: 0;
+  white-space: nowrap;
+}
+.row-state {
+  flex-shrink: 0;
+}
+.row-transcript {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .page-footer {
   font-size: 10px;
   color: #858c7d;
@@ -281,6 +294,10 @@ progress {
 .fixture-heading {
   flex-wrap: wrap;
 }
+.fixture-actions {
+  flex-wrap: wrap;
+  gap: 8px;
+}
 .fixture-heading .eyebrow {
   margin-bottom: 3px;
 }
@@ -305,6 +322,9 @@ h2 {
   gap: 5px;
   font-size: 11px;
   color: #66715f;
+}
+.contract-fields {
+  grid-template-columns: 1fr 1fr 2fr 1fr;
 }
 .fixture-fields input,
 .fixture-fields select {
@@ -335,6 +355,68 @@ h2 {
 .fixture-status {
   min-height: 18px;
   margin-bottom: 0;
+}
+.capture-panel {
+  margin-top: 24px;
+  border-top: 1px solid #cbd0bf;
+  padding-top: 20px;
+}
+.capture-writing-prompt {
+  font-size: 13px;
+  margin: 0;
+  padding: 10px 14px;
+  background: #eef0e8;
+  border: 1px solid #d9dfd7;
+}
+.capture-link {
+  display: inline-block;
+  color: #405d49;
+  font-size: 12px;
+  min-height: 44px;
+  padding: 10px 0;
+}
+.button.capture-link {
+  padding: 9px 13px;
+  margin-right: 8px;
+}
+.capture-setup {
+  min-width: 0;
+  border: 0;
+  margin: 0;
+  padding: 0;
+}
+.capture-device,
+.capture-prompt {
+  display: grid;
+  gap: 5px;
+  font-size: 12px;
+  margin: 12px 0;
+}
+.capture-device input,
+.capture-prompt select {
+  min-width: 0;
+  min-height: 44px;
+  padding: 8px;
+  border: 1px solid #cfd3c5;
+  border-radius: 5px;
+  background: #faf9f3;
+  color: inherit;
+}
+.capture-instruction,
+.capture-counts,
+.capture-confirm {
+  font-size: 12px;
+}
+.capture-confirm {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 12px 0;
+}
+.capture-confirm input {
+  min-width: 24px;
+  min-height: 44px;
+  accent-color: #2f5b48;
 }
 @media (max-width: 760px) {
   .workspace {

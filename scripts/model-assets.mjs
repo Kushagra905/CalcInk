@@ -16,7 +16,7 @@ const catalog = JSON.parse(
   await readFile(resolve(root, "assets/model-candidates.json"), "utf8"),
 );
 const mode = process.argv[2] ?? "prepare";
-const id = process.argv[3] ?? "ink-on-comer-int8";
+const id = process.argv[3] ?? catalog.selectedModelId;
 const candidate = catalog.candidates.find((item) => item.modelId === id);
 if (!candidate) throw new Error("UNKNOWN_MODEL");
 if (candidate.license.status === "missing")

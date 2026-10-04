@@ -17,6 +17,11 @@ describe("deterministic arithmetic", () => {
     [".5+1.25=", "1.75"],
     ["0.1+0.2=", "0.3"],
     ["10-3-2=", "5"],
+    ["10--2=", "12"],
+    ["(2+3)*4=", "20"],
+    ["1.0000000000005=", "1.000000000001"],
+    ["-0.0000000000001=", "0"],
+    [String.raw`$\left(2\, + 3\right)\times 4=$`, "20"],
     ["(18+4)*3=", "66"],
     ["6/-2=", "-3"],
     ["2--3=", "5"],
@@ -82,6 +87,8 @@ describe("deterministic arithmetic", () => {
     "2//3=",
     ".=",
     "8/0+=",
+    "8/0+)=",
+    "1(2)=",
     "(8/0)+=",
   ])("rejects malformed %s before evaluating it", (source) => {
     expect(evaluateTranscript(source).outcome).toEqual({
@@ -92,6 +99,7 @@ describe("deterministic arithmetic", () => {
   it.each([
     ["2==", "MULTIPLE_EQUALS"],
     ["1=2", "NON_TERMINAL_EQUALS"],
+    ["2=3", "NON_TERMINAL_EQUALS"],
     ["=", "EMPTY_EXPRESSION"],
     ["1+2=3=", "MULTIPLE_EQUALS"],
     ["$1+2=", "INVALID_WRAPPER"],
@@ -111,6 +119,7 @@ describe("deterministic arithmetic", () => {
     "1_000=",
     String.raw`\timesfoo=`,
     "alert(1)=",
+    "1$2=",
     "１２+３=",
   ])("rejects unsupported notation %s", (source) => {
     expect(evaluateTranscript(source).outcome.kind).toBe("unrecognized");

@@ -11,9 +11,14 @@ import type {
   WorkerToMainMessage,
 } from "./protocol";
 
-/** Explicit-run client for Phase 1. Reactive scheduling is implemented in Phase 3. */
+export type WorkerPort = Pick<
+  Worker,
+  "postMessage" | "terminate" | "onmessage" | "onerror"
+>;
+
+/** One worker and one active request; document scheduling belongs to the coordinator. */
 export class TrialClient {
-  private worker: Worker | null = null;
+  private worker: WorkerPort | null = null;
   private state: LoadingState = { kind: "idle" };
   private sequence = 0;
   private generation = 0;
@@ -32,9 +37,19 @@ export class TrialClient {
     }
   >();
 
-  constructor(private readonly onState: (state: LoadingState) => void) {}
+  constructor(
+    private readonly onState: (state: LoadingState) => void,
+    private readonly createWorker: () => WorkerPort = () =>
+      new Worker(new URL("./trial-worker.ts", import.meta.url), {
+        type: "module",
+      }),
+  ) {}
 
-  async load(candidate: ModelCandidate, baseUrl: string): Promise<void> {
+  async load(
+    candidate: ModelCandidate,
+    baseUrl: string,
+    suppliedManifest?: ModelManifest,
+  ): Promise<void> {
     this.unload();
     const generation = this.generation;
     this.setState({
@@ -44,22 +59,34 @@ export class TrialClient {
     });
     try {
       assertTrialAllowed(candidate);
-      const response = await fetch(
-        assetUrl(baseUrl, `models/${candidate.modelId}/manifest.json`),
-      );
-      if (generation !== this.generation) throw new Error("MODEL_UNLOADED");
-      if (!response.ok)
-        throw new Error("ASSETS_NOT_PREPARED: run npm run assets:prepare");
-      const manifest = (await response.json()) as ModelManifest;
+      let manifest = suppliedManifest;
+      if (!manifest) {
+        const response = await fetch(
+          assetUrl(baseUrl, `models/${candidate.modelId}/manifest.json`),
+          { signal: AbortSignal.timeout(90_000) },
+        );
+        if (generation !== this.generation) throw new Error("MODEL_UNLOADED");
+        if (!response.ok)
+          throw new Error("ASSETS_NOT_PREPARED: run npm run assets:prepare");
+        manifest = (await response.json()) as ModelManifest;
+      }
       if (generation !== this.generation) throw new Error("MODEL_UNLOADED");
       if (
         manifest.modelId !== candidate.modelId ||
-        manifest.revision !== candidate.revision
+        manifest.revision !== candidate.revision ||
+        !Array.isArray(manifest.files) ||
+        candidate.files.some(
+          (file) =>
+            !manifest.files.some(
+              (declared) =>
+                declared.path === file.path &&
+                declared.bytes === file.bytes &&
+                declared.sha256 === file.sha256,
+            ),
+        )
       )
         throw new Error("MODEL_MANIFEST_MISMATCH");
-      const worker = new Worker(new URL("./trial-worker.ts", import.meta.url), {
-        type: "module",
-      });
+      const worker = this.createWorker();
       this.worker = worker;
       worker.onmessage = (event: MessageEvent<WorkerToMainMessage>) => {
         if (this.worker !== worker) return;
@@ -119,14 +146,26 @@ export class TrialClient {
 
   unload(): void {
     this.generation++;
-    this.worker?.terminate();
-    this.worker = null;
+    this.terminateWorker();
     this.rejectPending(new Error("MODEL_UNLOADED"));
     this.setState({ kind: "idle" });
   }
 
   private send(message: MainToWorkerMessage): void {
-    this.worker!.postMessage(message);
+    try {
+      if (!this.worker) throw new Error("WORKER_NOT_AVAILABLE");
+      this.worker.postMessage(message);
+    } catch (error) {
+      this.fail(
+        error instanceof Error ? error : new Error("WORKER_SEND_FAILED"),
+      );
+    }
+  }
+  private terminateWorker(): void {
+    if (!this.worker) return;
+    this.worker.onmessage = this.worker.onerror = null;
+    this.worker.terminate();
+    this.worker = null;
   }
   private setState(state: LoadingState): void {
     this.state = state;
@@ -148,8 +187,7 @@ export class TrialClient {
     error: Error,
     modelId = this.state.kind === "idle" ? "uninitialized" : this.state.modelId,
   ): void {
-    this.worker?.terminate();
-    this.worker = null;
+    this.terminateWorker();
     this.rejectPending(error);
     this.setState({ kind: "error", modelId, message: error.message });
   }
@@ -165,7 +203,12 @@ export class TrialClient {
       this.init.resolve();
       this.init = null;
     }
-    if (message.type === "ERROR" && message.key === null) {
+    if (
+      message.type === "ERROR" &&
+      message.key === null &&
+      this.state.kind !== "idle" &&
+      message.modelId === this.state.modelId
+    ) {
       this.fail(new Error(message.message), message.modelId);
       return;
     }

@@ -111,6 +111,9 @@ test("production caches real ink-on under a base path and infers after offline r
   });
   await watchResults(page);
   await ready(page);
+  await expect(
+    page.getByRole("button", { name: "Reload to update" }),
+  ).toHaveCount(0);
   await context.setOffline(true);
   await page.reload();
   await expect(page.getByTestId("offline-status")).toHaveText("Ready offline", {

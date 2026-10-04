@@ -84,7 +84,12 @@ export function connectOffline(
   }
   function watch(worker: ServiceWorker) {
     const changed = () => {
-      if (!disposed && worker.state === "installed" && registration?.waiting)
+      if (
+        !disposed &&
+        worker.state === "installed" &&
+        registration?.active &&
+        registration.waiting
+      )
         onUpdate();
     };
     worker.addEventListener("statechange", changed);
@@ -119,7 +124,7 @@ export function connectOffline(
       cleanups.push(() =>
         registration?.removeEventListener("updatefound", updateFound),
       );
-      if (registration.waiting) onUpdate();
+      if (registration.active && registration.waiting) onUpdate();
       if (registration.installing) watch(registration.installing);
       if (!registration.active) {
         const worker = registration.installing;

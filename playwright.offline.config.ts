@@ -7,6 +7,7 @@ export default defineConfig({
   use: {
     baseURL: "http://127.0.0.1:4183/CalcInk/",
     browserName: "chromium",
+    channel: process.env.CALCINK_BROWSER_CHANNEL,
     deviceScaleFactor: 2,
   },
   webServer: {

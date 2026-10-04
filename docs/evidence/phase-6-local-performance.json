@@ -1,0 +1,94 @@
+{
+  "baseCommit": "2bffc0e58f547df798bf2276592da02914369ec0",
+  "applicationDiffSha256": "28b9fcdde334da8b7b59c9c0498600dffca134807a53832e1d6fbc2e645c6e62",
+  "buildVersion": "65c8f66148592467556514b6",
+  "environment": {
+    "cpu": "Intel(R) Core(TM) i7-14700HX",
+    "logicalCpus": 28,
+    "platform": "win32",
+    "osRelease": "10.0.26200",
+    "arch": "x64",
+    "browser": "153.0.8010.12",
+    "headless": true,
+    "viewport": {
+      "width": 1280,
+      "height": 720
+    },
+    "dpr": 2
+  },
+  "methodology": "Synthetic pointer moves on an actual captured mouse pointer; 2-second strokes and short lifts for repeated other-row recognition. rAF cadence and input-to-next-rAF are proxies, not physical display/pen latency. Post-GC heap covers the main-thread JS isolate, not worker/WASM/GPU/process memory. No genuine samples or accuracy claims.",
+  "elapsedMs": 62572.19999998808,
+  "heldPointerMs": 60651.299999952316,
+  "pointerMoves": 3630,
+  "idleFrames": {
+    "count": 119,
+    "medianMs": 16.699999999999818,
+    "p95Ms": 16.799999999999727,
+    "maxMs": 16.800000000000182
+  },
+  "drawingFrames": {
+    "count": 3754,
+    "medianMs": 16.69999999999709,
+    "p95Ms": 16.70000000001164,
+    "maxMs": 16.80000000000291
+  },
+  "observedRafPerSecond": 59.99469412935321,
+  "referenceFrameBudgetMs": 16.699999999999818,
+  "estimatedMissedSlots": 0,
+  "estimatedMissedSlotPercent": 0,
+  "inputToNextRaf": {
+    "count": 3630,
+    "medianMs": 16.5,
+    "p95Ms": 17.900000035762787,
+    "maxMs": 26.69999998807907
+  },
+  "longTaskObserverSupported": true,
+  "longTasks": [],
+  "domMutations": 210,
+  "overlappingRealResults": 30,
+  "cycles": {
+    "requested": 200,
+    "responses": 200,
+    "syntheticWorkerTimings": {
+      "count": 200,
+      "medianMs": 403.19999998807907,
+      "p95Ms": 469,
+      "maxMs": 504
+    },
+    "postGcMainThreadJsHeap": [
+      {
+        "cycle": 20,
+        "usedSize": 4388916,
+        "totalSize": 5365760
+      },
+      {
+        "cycle": 50,
+        "usedSize": 4304804,
+        "totalSize": 5103616
+      },
+      {
+        "cycle": 100,
+        "usedSize": 4414224,
+        "totalSize": 5365760
+      },
+      {
+        "cycle": 150,
+        "usedSize": 4467288,
+        "totalSize": 5365760
+      },
+      {
+        "cycle": 200,
+        "usedSize": 4528068,
+        "totalSize": 5365760
+      }
+    ],
+    "undoCommandsRetained": 100
+  },
+  "workers": {
+    "created": 1,
+    "peak": 1,
+    "active": 1
+  },
+  "browserErrors": [],
+  "workerErrors": []
+}

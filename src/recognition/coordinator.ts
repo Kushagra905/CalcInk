@@ -4,7 +4,6 @@ import type { RowSnapshot } from "../document/types";
 import type { ModelCandidate } from "./candidates";
 import type { CoordinatorCallbacks, RecognitionCoordinator } from "./contracts";
 import type { ModelManifest, RecognitionResponse } from "./protocol";
-import { rasterizeRow } from "./rasterize";
 import type { WorkerPort } from "./trial-client";
 import { TrialClient } from "./trial-client";
 
@@ -52,19 +51,9 @@ export function createCoordinator(
   }, options.createWorker);
 
   function hasInk(row: RowSnapshot): boolean {
-    if (!row.operations.some((operation) => operation.kind === "stroke"))
-      return false;
-    // Check composited blankness only for masked rows, once per completed edit.
-    if (
-      !row.operations.some((operation) => operation.kind === "pixel-mask") ||
-      typeof OffscreenCanvas === "undefined"
-    )
-      return true;
-    try {
-      return rasterizeRow(row.operations, row.rowId).canvas !== null;
-    } catch {
-      return true;
-    } // Let the worker report rasterization failure; never interrupt a store commit.
+    // Skip structurally empty rows here. Adapters composite masked ink in the
+    // worker and return an empty result before inference when no pixels survive.
+    return row.operations.some((operation) => operation.kind === "stroke");
   }
 
   function current(row: RowSnapshot, requestEpoch: number): boolean {

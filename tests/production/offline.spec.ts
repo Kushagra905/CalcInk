@@ -320,6 +320,15 @@ test("updates preserve ink, require other tabs to close and retire old caches af
       "Ready offline",
       { timeout: 90_000 },
     );
+    // Controller changes can arrive before the activation cleanup finishes.
+    await expect
+      .poll(() =>
+        page.evaluate(
+          async () =>
+            (await navigator.serviceWorker.getRegistration())?.active?.state,
+        ),
+      )
+      .toBe("activated");
     const names = await page.evaluate(() => caches.keys());
     expect(names.filter((name) => name.startsWith("calcink:"))).toHaveLength(1);
     expect(names.some((name) => name.endsWith(`:${oldVersion}`))).toBe(false);

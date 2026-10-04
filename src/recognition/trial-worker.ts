@@ -1,8 +1,7 @@
 /// <reference lib="webworker" />
-
-import { evaluateTranscript } from "../math/evaluate";
 import type { RecognitionAdapter } from "./adapter";
 import { assertTrialAllowed, getCandidate } from "./candidates";
+import { evaluateRecognition } from "./evaluate";
 import type {
   MainToWorkerMessage,
   RevisionKey,
@@ -31,12 +30,19 @@ async function handle(message: MainToWorkerMessage): Promise<void> {
       const candidate = getCandidate(message.config.modelId);
       modelId = candidate.modelId;
       assertTrialAllowed(candidate);
+      if (typeof OffscreenCanvas !== "function")
+        throw new Error("OFFSCREEN_CANVAS_UNAVAILABLE");
+      if (!new OffscreenCanvas(1, 1).getContext("2d"))
+        throw new Error("CANVAS_2D_UNAVAILABLE");
       if (new URL(message.config.baseUrl).origin !== scope.location.origin)
         throw new Error("CROSS_ORIGIN_MODEL_ASSETS");
       if (
         candidate.adapter !== message.config.adapter ||
         candidate.revision !== message.config.manifest.revision ||
-        candidate.modelId !== message.config.manifest.modelId
+        candidate.modelId !== message.config.manifest.modelId ||
+        !Number.isSafeInteger(message.config.maxOutputTokens) ||
+        message.config.maxOutputTokens < 1 ||
+        message.config.maxOutputTokens > 128
       )
         throw new Error("MODEL_CONFIG_MISMATCH");
       const Constructor =
@@ -53,20 +59,9 @@ async function handle(message: MainToWorkerMessage): Promise<void> {
     const { epoch, rowId, rowRevision, requestId } = message.request;
     key = { epoch, rowId, rowRevision, requestId };
     if (!adapter) throw new Error("ADAPTER_NOT_READY");
-    const response = await adapter.recognize(message.request);
-    const start = performance.now();
-    const calculated =
-      response.outcome.kind === "unrecognized" &&
-      response.outcome.code === "EVALUATION_ONLY"
-        ? evaluateTranscript(response.transcript)
-        : { transcript: response.transcript, outcome: response.outcome };
     send({
       type: "RESULT",
-      response: {
-        ...response,
-        ...calculated,
-        timing: { ...response.timing, evaluateMs: performance.now() - start },
-      },
+      response: evaluateRecognition(await adapter.recognize(message.request)),
     });
   } catch (error) {
     send({

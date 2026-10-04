@@ -9,7 +9,9 @@ and handwriting capture/benchmark tooling. The user changed the current choice t
 ink-on CoMER INT8 on October 4, 2026. Measured genuine development validation remains
 pending. TrOCR remains an optional license-gated candidate. See `phase-1-model-evaluation.md`.
 
-Phase 2 worker arithmetic and Phase 3 reactive recognition scheduling are implemented.
+Phase 2 strict worker arithmetic and Phase 3 reactive recognition scheduling are implemented.
+Arithmetic retains raw transcripts, exposes normalized text separately, and preserves decoder-limit failures.
+See `phase-2-arithmetic.md` for grammar, resource bounds and decimal formatting.
 Notebook and lab now share TrialClient and the nested INIT/RECOGNIZE protocol.
 Phase 4 adds both erasers. Phase 5 implements verified offline caching; public deployment
 and genuine offline arithmetic acceptance remain pending. See `phase-5.md`.
@@ -58,7 +60,7 @@ Production adapter selection must reject mock mode before deployment.
 Recognition responses preserve epoch, rowId, rowRevision,
 and requestId, and include modelId.
 
-The shared client/coordinator validate all five before applying
+TrialClient and the notebook coordinator validate all five before applying
 a response or request-specific error.
 
 ## Verification

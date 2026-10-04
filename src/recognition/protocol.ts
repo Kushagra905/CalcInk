@@ -35,6 +35,8 @@ export interface RecognitionRequest extends RevisionKey {
 export interface RecognitionResponse extends RevisionKey {
   readonly modelId: string;
   readonly transcript: string;
+  /** Canonical arithmetic text; raw transcript remains available for model review. */
+  readonly normalizedTranscript?: string | null;
   readonly outcome: CalculationOutcome;
   readonly visibleInkBounds: Bounds | null;
 

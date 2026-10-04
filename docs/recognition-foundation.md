@@ -5,15 +5,16 @@
 Shared types, adapter interface, and mock adapter are implemented.
 
 Phase 1 adds a local real-model trial worker, asset verification, loading state,
-and handwriting capture/benchmark tooling. The user selected MathWriting TrOCR INT8
-as the final model on October 4, 2026. Weight-license evidence and measured development
-validation remain pending. See `phase-1-model-evaluation.md`.
+and handwriting capture/benchmark tooling. The user changed the current choice to
+ink-on CoMER INT8 on October 4, 2026. Measured genuine development validation remains
+pending. TrOCR remains an optional license-gated candidate. See `phase-1-model-evaluation.md`.
 
 Phase 2 strict worker arithmetic and Phase 3 reactive recognition scheduling are implemented.
 Arithmetic retains raw transcripts, exposes normalized text separately, and preserves decoder-limit failures.
 See `phase-2-arithmetic.md` for grammar, resource bounds and decimal formatting.
 Notebook and lab now share TrialClient and the nested INIT/RECOGNIZE protocol.
-Phase 4 adds both erasers. Offline caching is pending Phase 5.
+Phase 4 adds both erasers. Phase 5 implements verified offline caching; public deployment
+and genuine offline arithmetic acceptance remain pending. See `phase-5.md`.
 
 ## Ownership
 

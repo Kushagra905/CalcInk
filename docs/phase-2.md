@@ -46,10 +46,10 @@ coalesced pressure, second-pointer rejection, row clipping, changed-row repaint 
 DOM/worker pixels including ordered masks. Physical stylus/touch hardware remains a release
 check; emulated inputs do not establish hardware coverage.
 
-The optional real-model check requires ink-on comparison assets: pass
-`-- ink-on-comer-int8` to assets:prepare/assets:verify, then use CALCINK_MODEL_TEST=1.
+The optional development real-model check uses the now-selected ink-on assets:
+run assets:prepare/assets:verify, then use CALCINK_MODEL_TEST=1.
 It verifies initialization/inference and worker arithmetic, not handwriting accuracy.
-Ordinary CI needs no model downloads. Both builds and production mock/capture exclusion
-are checked. Reactive notebook results and both erasers are now implemented in
-Phases 3/4; see their current handoff notes. Offline caching remains Phase 5.
-Genuine TrOCR validation and its weight-license evidence are still pending.
+CI now prepares the selected assets and checks the production offline notebook as part
+of Phase 5. Reactive results and both erasers are implemented in Phases 3/4; see their
+handoff notes. Genuine selected-model validation remains pending. TrOCR is an optional
+candidate with unresolved weight-license evidence.

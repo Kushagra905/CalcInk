@@ -1,0 +1,17 @@
+import { defineConfig } from "@playwright/test";
+
+export default defineConfig({
+  testDir: "./tests/production",
+  workers: 1,
+  timeout: 120_000,
+  use: {
+    baseURL: "http://127.0.0.1:4183/CalcInk/",
+    browserName: "chromium",
+    deviceScaleFactor: 2,
+  },
+  webServer: {
+    command: "npm run preview -- --port 4183 --strictPort --base /CalcInk/",
+    url: "http://127.0.0.1:4183/CalcInk/",
+    reuseExistingServer: false,
+  },
+});

@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "reviewedAt": "2026-10-03",
-  "selectedModelId": "trocr-mathwriting-int8",
+  "selectedModelId": "ink-on-comer-int8",
   "candidates": [
     {
       "modelId": "trocr-mathwriting-int8",
@@ -81,12 +81,13 @@
     {
       "modelId": "ink-on-comer-int8",
       "adapter": "ink-on",
-      "name": "ink-on CoMER INT8 (comparison candidate)",
+      "name": "ink-on CoMER INT8",
       "revision": "2585994ee11fe2ed98065c555c4aae8ee9096209",
       "source": "https://github.com/kimseungdae/ink-on",
       "license": {
         "status": "repository",
         "id": "Apache-2.0",
+        "file": "docs/licenses/ink-on-Apache-2.0.txt",
         "evidence": "https://github.com/kimseungdae/ink-on/blob/2585994ee11fe2ed98065c555c4aae8ee9096209/LICENSE",
         "note": "Repository includes the ONNX files and a root Apache-2.0 license. Retain attribution and license; record any additional upstream weight conditions before final release."
       },

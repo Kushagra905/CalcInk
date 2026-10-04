@@ -470,3 +470,25 @@ fieldset.tool-group {
 .input-layer:focus-visible {
   outline-offset: -3px;
 }
+.offline-panel {
+  margin-top: 16px;
+  padding: 14px 16px;
+  border: 1px solid #d7ddce;
+  border-radius: 10px;
+  background: #f2f5ec;
+  color: #2f5b48;
+  font-size: 13px;
+}
+.model-attribution {
+  font-size: 12px;
+  color: #626f64;
+}
+.offline-panel .button {
+  margin-top: 10px;
+}
+.offline-update {
+  margin-top: 12px;
+}
+.offline-update span {
+  display: block;
+}

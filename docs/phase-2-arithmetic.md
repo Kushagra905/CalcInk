@@ -95,7 +95,7 @@ npm run verify:production
 npm run assets:verify -- ink-on-comer-int8
 ```
 
-Run the lab with `npm run dev:lab`; prepare assets first if absent. Write an expression ending in `=`, initialize the candidate, and click Recognize. Inspect raw text alongside the normalized text and outcome. A correct calculator cannot compensate for an incorrect transcription. These checks do not establish handwriting accuracy, p95 or offline readiness. The selected TrOCR candidate remains blocked by unresolved weight-license evidence. Notebook scheduling and inline results are described in `phase-3.md`. Use `-- ink-on-comer-int8` with asset preparation/verification for the available comparison model.
+Run the lab with `npm run dev:lab`; prepare assets first if absent. Write an expression ending in `=`, initialize the candidate, and click Recognize. Inspect raw text alongside the normalized text and outcome. A correct calculator cannot compensate for an incorrect transcription. These checks do not establish handwriting accuracy, p95 or offline readiness. Ink-on CoMER INT8 is the selected candidate; optional TrOCR remains blocked by unresolved weight-license evidence. Notebook scheduling and inline results are described in `phase-3.md`. Asset preparation/verification defaults to the selected ink-on model.
 
 Phase 2 is committed on `b/recognition-foundation`. This merge combines the latest main
 with that branch. Resolve and verify first, then stage only the intended merge files,
@@ -123,8 +123,8 @@ The arithmetic suite also retains main's additional valid, malformed and unsuppo
 
 The lab preserves main's selected-model default, held-out recognition guards, busy guards,
 and separate sample exports while adding normalized text, readable outcomes and explicit
-OffscreenCanvas compatibility feedback. TrOCR remains selected and license-blocked;
-the optional real-model check explicitly uses ink-on comparison assets.
+OffscreenCanvas compatibility feedback. These checks were run while TrOCR was selected
+and license-blocked; the real-model check used ink-on, which is now the selected model.
 
 - TypeScript/Biome check passed with 10 existing lint warnings and one informational finding.
 - 146 unit tests across nine files passed.

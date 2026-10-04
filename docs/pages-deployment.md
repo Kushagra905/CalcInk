@@ -2,9 +2,11 @@
 
 ## Current state
 
-The recognition branch contains the deployment implementation and local verification.
-The assistant leaves it uncommitted. The expected public URL is
-`https://kushagra905.github.io/CalcInk/`, which returned HTTP 404 on October 4, 2026.
+The deployment implementation is merged into main as `2bffc0e`. On October 4, 2026,
+[run 37214914589](https://github.com/Kushagra905/CalcInk/actions/runs/37214914589)
+passed its build checks but failed deployment with HTTP 404 and GitHub's request to
+enable Pages. The public verification job was skipped. The expected public URL is
+`https://kushagra905.github.io/CalcInk/`.
 Do not present it as a live demo until the Pages workflow and public check pass.
 
 Ink-on CoMER INT8 remains selected. Developer A's verified offline caching is integrated;
@@ -22,30 +24,16 @@ The app and tests use the case-sensitive `/CalcInk/` repository prefix. If the r
 is renamed or a custom domain is introduced, update the Pages build base and prefixed
 tests before publishing. The current workflow does not require a PAT or cloud model key.
 
-## 2. Review, commit and push Phase 5
+## 2. Integrated Phase 5
 
-```powershell
-Set-Location 'C:\Users\kushagra\OneDrive\Desktop\hj\CalcInk'
-git branch --show-current
-git status --short
-git add -- .github/workflows/ci.yml .github/workflows/pages.yml package.json
-git add -- scripts/asset-manifest.mjs scripts/model-assets.mjs scripts/offline-build.mjs scripts/verify-deployment.mjs tests/scripts/asset-manifest.test.mjs
-git add -- README.md docs/phase-5.md docs/pages-deployment.md
-git diff --cached --check
-git --no-pager diff --cached --stat
-git commit -m "feat(deploy): complete phase 5 verified Pages delivery"
-git push origin b/recognition-foundation
-```
-
-Confirm the branch is `b/recognition-foundation` before staging. Explicit paths exclude
-the unrelated accidental file and generated assets. Review the staged summary; these
-changes cover 11 files. Stop if checks report errors. Publishing occurs only after main
-receives the workflow; pushing this recognition branch does not deploy.
+Developer B committed Phase 5 as `e350fac`; PR #9 merged it into main as `2bffc0e`.
+There is no remaining Phase 5 commit/PR step before enabling Pages. Generated assets
+stay ignored; the existing main workflow prepares them and publishes its tested build.
 
 ## 3. Merge and publish
 
-1. Create or update the recognition-to-main pull request. Review the Phase 5 diff and
-   wait for **CalcInk checks** to pass, then merge into main.
+1. Enable Pages as above, then open the failed main run and choose **Re-run jobs →
+   Re-run failed jobs**. Future changes publish only after their PR merges into main.
 2. Open **Actions → CalcInk Pages**. Its build job runs the reusable checks and uploads
    the exact tested production artifact. The deploy job publishes that artifact into
    `github-pages`; the read-only public job checks its tested version and asset hashes.

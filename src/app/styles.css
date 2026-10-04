@@ -98,7 +98,7 @@ button:disabled {
   font-size: 10px;
   letter-spacing: 2px;
   font-weight: 650;
-  color: #7c8377;
+  color: #626f64;
   margin: 0 0 10px;
 }
 h1 {
@@ -111,7 +111,7 @@ h1 {
 .intro > p:last-child {
   margin: 10px 0 0;
   font-size: 14px;
-  color: #727b70;
+  color: #626f64;
 }
 .mock-notice {
   font-size: 12px;
@@ -133,6 +133,7 @@ h1 {
   gap: 4px;
 }
 .tool {
+  min-width: 44px;
   min-height: 44px;
   padding: 0 12px;
   font-size: 12px;
@@ -145,12 +146,15 @@ h1 {
   color: #fff;
   background: #2f5b48;
 }
+.tool.clear {
+  color: #a34332;
+}
 .pen-width {
   display: flex;
   align-items: center;
   gap: 8px;
   font-size: 12px;
-  color: #657162;
+  color: #626f64;
 }
 .pen-width input {
   width: 78px;
@@ -235,7 +239,7 @@ h1 {
   align-items: center;
   gap: 10px;
   padding: 0 4.5%;
-  color: #939888;
+  color: #626f64;
   font-size: 11px;
   overflow: hidden;
 }
@@ -263,13 +267,13 @@ h1 {
 }
 .page-footer {
   font-size: 10px;
-  color: #858c7d;
+  color: #626f64;
   padding: 12px 1px;
   align-items: start;
 }
 .model-message {
   font-size: 12px;
-  color: #747d6e;
+  color: #626f64;
   margin: 8px 0;
   display: flex;
   align-items: center;
@@ -453,7 +457,7 @@ h2 {
   }
   .feedback-row {
     display: inline;
-    color: #858c7d;
+    color: #626f64;
   }
   .tool {
     padding: 0 8px;

@@ -122,6 +122,23 @@ The main-branch Pages workflow reuses the same checks, publishes their tested ar
 then verifies the hosted build version and critical asset hashes.
 Production verification attempts a mock-mode build and checks the actual output for mock-worker/fixture leakage.
 
+## Phase 6 release checks
+
+Toolbar targets, readable text, keyboard focus, live DPR changes and history shortcuts
+have browser regressions. Run the real-model performance measurement after a Pages build:
+
+```sh
+npm run build:pages
+npm run test:performance
+```
+
+The test records 60 seconds of drawing during other-row inference, 200 draw/edit/clear
+cycles, frame/input timing, long tasks, main-thread JS heap and worker/history bounds.
+CI runs it against the same production build. Timings are observations of the named
+runner, not universal hardware guarantees. See [Phase 6](docs/phase-6.md),
+[measured performance](docs/performance.md) and [model acceptance](docs/model-evaluation.md).
+Physical mouse/touch/stylus checks and genuine handwriting evaluation remain required.
+
 ## Integration with Developer B
 
 See [the Phase 0 contract](docs/phase-0.md). The document store owns epoch/row revisions;
@@ -198,9 +215,9 @@ The public Pages deployment and genuine offline arithmetic demonstration remain 
 
 ## GitHub Pages publication
 
-Phase 5's deployment code is implemented on the recognition branch. Enable **Settings →
-Pages → Build and deployment → Source: GitHub Actions** in the repository, then merge the
-Phase 5 pull request into `main`. The **CalcInk Pages** workflow builds, publishes and
+Phase 5's deployment code is merged into `main`. Enable **Settings → Pages → Build and
+deployment → Source: GitHub Actions**, then rerun the failed deployment job. The
+**CalcInk Pages** workflow builds, publishes and
 checks the public artifact; feature branches cannot publish. See
 [deployment setup, commit commands and acceptance](docs/pages-deployment.md).
 

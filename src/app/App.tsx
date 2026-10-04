@@ -214,7 +214,7 @@ export function App() {
             <button
               key={tool}
               type="button"
-              className="tool"
+              className={`tool${tool === "Clear" ? " clear" : ""}`}
               disabled={!enabled}
               onClick={action}
               title={

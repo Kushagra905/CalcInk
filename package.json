@@ -18,6 +18,7 @@
     "test:assets": "node --test tests/scripts/asset-manifest.test.mjs",
     "test:e2e": "playwright test",
     "test:offline": "playwright test --config playwright.offline.config.ts",
+    "test:performance": "playwright test --config playwright.performance.config.ts",
     "build": "npm run assets:verify && tsc --noEmit && vite build && node scripts/offline-build.mjs",
     "build:pages": "npm run assets:verify && tsc --noEmit && vite build --base /CalcInk/ && node scripts/offline-build.mjs",
     "preview": "vite preview --host 127.0.0.1",

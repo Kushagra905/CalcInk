@@ -491,7 +491,7 @@ export function Notebook({
                     <span className="row-state">{status}</span>
                     {result.transcript && (
                       <span className="row-transcript">
-                        {result.transcript
+                        {(result.normalizedTranscript ?? result.transcript)
                           .replaceAll("*", "×")
                           .replaceAll("/", "÷")}
                       </span>

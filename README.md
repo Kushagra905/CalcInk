@@ -78,6 +78,9 @@ production builds exclude it and reject `--mode mock`.
 Recognition waits for 350 ms after a completed edit. One inference runs at a time, with
 only the latest pending snapshot per row. Editing clears that row's answer immediately;
 old replies cannot restore it after drawing, erasing, cancellation, history or clear.
+Masked ink is composited in the worker; fully erased rows skip model inference. Unloading
+or replacing a model cancels its pending manifest download. Supported transcripts display
+as normalized arithmetic while raw model text stays available for benchmarking.
 Answers start 12 logical units after surviving ink at the row baseline. They shrink from
 32 to 16 logical units; when space is insufficient, status says **Leave room after =**.
 

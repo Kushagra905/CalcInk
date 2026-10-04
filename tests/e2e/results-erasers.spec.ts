@@ -112,6 +112,25 @@ test("inline answers clear synchronously on edit, reject late replies and preser
   await gesture(page, [[100, 220]]);
   await expect(page.locator('[data-row="row-2"]')).toContainText("Ready");
   const other = await bitmap(page, "results", 1);
+  const worker = page.workers()[0];
+  if (!worker) throw new Error("Missing fixture worker");
+  // Hold the real fixture worker's next reply until the test has begun editing.
+  // This makes stale-result coverage independent of host/browser scheduling.
+  await worker.evaluate(() => {
+    const scope = self as unknown as { postMessage(message: unknown): void };
+    const send = scope.postMessage.bind(scope);
+    const replies: unknown[] = [];
+    scope.postMessage = (message) => {
+      if ((message as { type: string }).type === "RESULT")
+        replies.push(message);
+      else send(message);
+    };
+    Reflect.set(self, "hasHeldResult", () => replies.length > 0);
+    Reflect.set(self, "releaseResults", () => {
+      scope.postMessage = send;
+      for (const message of replies) send(message);
+    });
+  });
   await gesture(page, [
     [100, 60],
     [120, 65],
@@ -121,8 +140,11 @@ test("inline answers clear synchronously on edit, reject late replies and preser
   await page.mouse.down();
   expect((await bitmap(page, "results", 0)).hasInk).toBe(false);
   expect(await bitmap(page, "results", 1)).toEqual(other);
-  // Deliberately let the obsolete worker reply arrive while the new pointer is held.
-  await page.waitForTimeout(700);
+  await expect
+    .poll(() => worker.evaluate(() => Reflect.get(self, "hasHeldResult")()))
+    .toBe(true);
+  // Release the obsolete reply while the new pointer is held.
+  await worker.evaluate(() => Reflect.get(self, "releaseResults")());
   expect((await bitmap(page, "results", 0)).hasInk).toBe(false);
   await page.mouse.up();
   await expect(page.locator('[data-row="row-1"]')).toContainText("Ready");
@@ -134,6 +156,64 @@ test("inline answers clear synchronously on edit, reject late replies and preser
   await page.getByRole("button", { name: "Undo", exact: true }).click();
   await expect(page.locator('[data-row="row-1"]')).toContainText("Ready");
   await expect(page.locator('[data-row="row-2"]')).toContainText("Ready");
+});
+
+test("supported model LaTeX displays readable arithmetic beside an inline answer", async ({
+  page,
+}) => {
+  await page.goto(
+    `/?transcript=${encodeURIComponent(String.raw`\(18 + 4 \times 3 =\)`)}`,
+  );
+  await expect(page.getByText("Mock ready", { exact: true })).toBeVisible();
+  await gesture(page, [
+    [100, 60],
+    [140, 65],
+  ]);
+  const row = page.locator('[data-row="row-1"]');
+  await expect(row).toContainText("Ready");
+  await expect(row.locator(".row-transcript")).toHaveText("18+4×3=");
+  expect((await bitmap(page, "results", 0)).hasInk).toBe(true);
+});
+
+test("recognition failure retries without losing ink or history", async ({
+  page,
+}) => {
+  await page.goto("/?mock=error");
+  await expect(page.getByText("Mock ready", { exact: true })).toBeVisible();
+  await gesture(page, [
+    [100, 60],
+    [140, 65],
+  ]);
+  const ink = await bitmap(page);
+  await expect(page.locator('[data-row="row-1"]')).toContainText(
+    "MOCK_RECOGNITION_FAILED",
+  );
+  expect((await bitmap(page, "results", 0)).hasInk).toBe(false);
+  await page.getByRole("button", { name: "Retry recognition" }).click();
+  await expect(page.locator('[data-row="row-1"]')).toContainText("Ready");
+  expect(await bitmap(page)).toEqual(ink);
+  expect((await bitmap(page, "results", 0)).hasInk).toBe(true);
+  await page.getByRole("button", { name: "Undo", exact: true }).click();
+  expect((await bitmap(page)).hasInk).toBe(false);
+  expect((await bitmap(page, "results", 0)).hasInk).toBe(false);
+});
+
+test("one automatic worker restart recovers a timeout while preserving committed ink", async ({
+  page,
+}) => {
+  test.setTimeout(25000);
+  await page.goto("/?mock=timeout-once");
+  await expect(page.getByText("Mock ready", { exact: true })).toBeVisible();
+  await gesture(page, [
+    [100, 60],
+    [140, 65],
+  ]);
+  const ink = await bitmap(page);
+  await expect(page.locator('[data-row="row-1"]')).toContainText("Ready", {
+    timeout: 17000,
+  });
+  expect(await bitmap(page)).toEqual(ink);
+  expect((await bitmap(page, "results", 0)).hasInk).toBe(true);
 });
 
 test("division by zero renders Undefined; overflow never overwrites ink", async ({

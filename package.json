@@ -29,6 +29,7 @@
   },
   "dependencies": {
     "@huggingface/transformers": "4.3.0",
+    "decimal.js": "10.6.0",
     "ink-on": "0.1.0",
     "onnxruntime-web": "1.22.0",
     "react": "19.3.0",

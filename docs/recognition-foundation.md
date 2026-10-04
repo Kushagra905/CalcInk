@@ -8,8 +8,9 @@ Phase 1 adds a local real-model trial worker, asset verification, loading state,
 and handwriting capture/benchmark tooling. Final model selection still requires
 the team's measured development samples. See `phase-1-model-evaluation.md`.
 
-Reactive recognition scheduling, arithmetic evaluation, and offline caching
-are pending later phases.
+Phase 2 adds strict normalization, decimal evaluation and calculation outcomes
+inside the trial worker. See `phase-2-arithmetic.md`. Reactive notebook
+recognition scheduling and offline caching are pending later phases.
 
 ## Ownership
 

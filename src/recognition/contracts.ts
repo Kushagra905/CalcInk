@@ -17,6 +17,7 @@ export type CalculationOutcome =
 export interface RecognitionResponse extends RevisionKey {
   modelId: string;
   transcript: string;
+  normalizedTranscript?: string | null;
   outcome: CalculationOutcome;
   visibleInkBounds: Bounds | null;
   timing: { preprocessMs: number; inferenceMs: number; evaluateMs: number };

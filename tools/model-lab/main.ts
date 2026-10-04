@@ -5,6 +5,7 @@ import type { LoadingState } from "../../src/recognition/loading-state";
 import type { BenchmarkEntry } from "../../src/recognition/benchmark";
 import { summarizeBenchmark } from "../../src/recognition/benchmark";
 import { replayInk } from "../../src/ink/replay";
+import { describeOutcome } from "../../src/math/status";
 import { candidates, getCandidate } from "../../src/recognition/candidates";
 import { TrialClient } from "../../src/recognition/trial-client";
 import { sampleCases } from "./cases";
@@ -48,7 +49,7 @@ const client = new TrialClient((state) => {
     status.textContent = state.progress?.detail ?? "Checking local model manifest…";
   } else {
     progress.value = state.kind === "ready" ? 1 : 0;
-    status.textContent = state.kind === "ready" ? "Local model ready. Phase 5 will add offline caching." : state.kind === "error" ? `Load failed: ${state.message}. Prepare assets, then retry.` : "Model not initialized.";
+    status.textContent = state.kind === "ready" ? "Local model ready. Phase 5 will add offline caching." : state.kind === "error" ? ["OFFSCREEN_CANVAS_UNAVAILABLE", "CANVAS_2D_UNAVAILABLE"].includes(state.message) ? "This browser cannot rasterize ink in a worker. Use a browser with OffscreenCanvas 2D support." : `Load failed: ${state.message}. Prepare assets, then retry.` : "Model not initialized.";
   }
   syncControls();
 });
@@ -152,7 +153,7 @@ element("recognize").onclick = async () => {
   busy = true; syncControls();
   try {
     const result = await infer(structuredClone(operations), capturedRevision);
-    if (revision === capturedRevision) element("result").textContent = JSON.stringify({ transcript: result.transcript, timing: result.timing, visibleInkBounds: result.visibleInkBounds, note: "Recognition only; arithmetic evaluation is Phase 2." }, null, 2);
+    if (revision === capturedRevision) element("result").textContent = JSON.stringify({ transcript: result.transcript, normalizedTranscript: result.normalizedTranscript, outcome: result.outcome, status: describeOutcome(result.outcome), timing: result.timing, visibleInkBounds: result.visibleInkBounds }, null, 2);
   } catch (error) { if (revision === capturedRevision) element("result").textContent = String(error); }
   finally { busy = false; syncControls(); }
 };
@@ -175,7 +176,7 @@ element("benchmark").onclick = async () => {
       try {
         const result = await infer(saved.find((fixture) => fixture.sampleId === item.id)!.operations, index + 1);
         if (result.outcome.kind === "unrecognized" && result.outcome.code === "OUTPUT_LIMIT") throw new Error("OUTPUT_LIMIT");
-        entries.push({ sampleId: item.id, expected: item.expected, transcript: result.transcript, latencyMs: result.timing.preprocessMs + result.timing.inferenceMs });
+        entries.push({ sampleId: item.id, expected: item.expected, transcript: result.transcript, latencyMs: result.timing.preprocessMs + result.timing.inferenceMs + result.timing.evaluateMs });
       } catch (error) { entries.push({ sampleId: item.id, expected: item.expected, transcript: "", latencyMs: performance.now() - start, error: String(error) }); }
     }
     report = { schemaVersion: 1, recordedAt: new Date().toISOString(), modelId: candidate.modelId, revision: candidate.revision, preprocessing: candidate.adapter === "ink-on" ? "shared quadratic replay; alpha crop; CoMER height 256; number mode; beam 3" : "shared quadratic replay; alpha crop on white; TrOCR processor; INT8 encoder and decoder", userAgent: navigator.userAgent, hardwareConcurrency: navigator.hardwareConcurrency, split: "development", summary: summarizeBenchmark(entries), samples: saved.filter((item) => cases.some((test) => test.id === item.sampleId)), entries };

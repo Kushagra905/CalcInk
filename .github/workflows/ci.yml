@@ -1,4 +1,4 @@
-name: Phase 0 checks
+name: CalcInk checks
 
 on: [push, pull_request]
 
@@ -20,4 +20,5 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e
       - run: npm run build
+      - run: npm run build:lab
       - run: npm run verify:production

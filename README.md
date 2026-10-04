@@ -6,7 +6,7 @@ On-device handwritten math calculator for the Inter IIT Software Development Boo
 
 The foundation includes a React/TypeScript/Vite notebook, three aligned Canvas 2D layers,
 basic pen capture, immutable document snapshots/edit events, and shared recognition contracts.
-The notebook currently uses the development mock. Real recognition is available separately in the Phase 1 model lab below; arithmetic, history, erasers, inline answers, and offline caching remain pending.
+The notebook currently uses the development mock. Real recognition and deterministic arithmetic are available separately in the model lab below; history, erasers, inline notebook answers, and offline caching remain pending.
 
 Use Node.js 22.12+ (tested here with Node.js 24). Dependencies are pinned in `package-lock.json`.
 
@@ -46,7 +46,7 @@ npm run preview
 Playwright starts the mock server automatically and tests the real browser-worker path.
 Unit tests need no model files. The model lab provides `assets:prepare`/`assets:verify` for local model assets. Final release/offline checks remain pending.
 
-The initial CI workflow runs these foundation checks on pushes and pull requests; it does not deploy.
+The CI workflow runs the foundation checks and both notebook/model-lab builds on pushes and pull requests; it does not deploy.
 Production verification attempts a mock-mode build and checks the actual output for mock-worker/fixture leakage.
 
 ## Integration with Developer B
@@ -57,7 +57,7 @@ Neither the mock tests nor the synthetic fixture establish model accuracy, laten
 
 ## Developer B — Phase 1 model lab
 
-Requires Node.js 22.12 or newer. The notebook foundation is described above; the arithmetic pipeline and connecting the real model to that notebook are later phases.
+Requires Node.js 22.12 or newer. Phase 2 adds worker-side arithmetic to recognized model-lab expressions. Connecting the real model to the notebook is Phase 3.
 
 ```powershell
 npm ci
@@ -81,3 +81,9 @@ npm run build:lab
 ## Shared integration status
 
 The readonly document types include row snapshots and edit reasons used by both implementations. The Phase 0 notebook worker contract and Phase 1 trial worker protocol remain separate; their unification and shared notebook/worker replay are part of the planned recognition integration, not this merge.
+
+## Developer B — Phase 2 arithmetic
+
+The lab now reports raw text, normalized text, calculation outcome, and separate preprocessing/inference/evaluation times. A recognized expression needs exactly one terminal equals sign. Unsupported notation and malformed expressions are rejected; division by zero returns `Undefined`. Evaluation uses 28 significant digits and displays at most 12 decimal places.
+
+See [Phase 2 arithmetic](docs/phase-2-arithmetic.md) for the grammar, limits, API, changed files, verification, and commit instructions. Recognition accuracy and final model selection still require the real handwriting benchmark.

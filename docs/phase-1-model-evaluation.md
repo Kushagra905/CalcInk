@@ -12,7 +12,7 @@ Verified on 3 October 2026:
 - The first observed smoke request used approximately 60 ms preprocessing and 617 ms inference in the in-app browser. This is one observation, not a p95 or representative handwriting benchmark.
 - Downloaded ink-on model assets total 7,582,523 bytes. Prepared model plus runtime files total 40,730,526 bytes. Generated assets are ignored by Git.
 
-Arithmetic evaluation is Phase 2. The real adapters currently return transcript, visible bounds, timings, and `EVALUATION_ONLY` status, not a calculated answer. Debounce and reactive document scheduling are Phase 3. Complete offline cache/reload readiness is Phase 5; `Local model ready` does not imply `Ready offline`.
+Phase 2 now postprocesses real adapter output in the trial worker: it retains raw text and adds normalized text, a calculation outcome, and evaluation timing. The adapters' internal `EVALUATION_ONLY` status is consumed by this pipeline; decoder-limit failures are preserved. See [Phase 2 arithmetic](phase-2-arithmetic.md). Debounce and reactive document scheduling are Phase 3. Complete offline cache/reload readiness is Phase 5; `Local model ready` does not imply `Ready offline`.
 
 ## Candidate review
 

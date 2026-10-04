@@ -9,8 +9,10 @@ TrOCR remains an optional candidate with its unchanged license gate.
 Local offline engineering, deployment workflows and asset verification are implemented.
 Phase 5 is merged into main as `2bffc0e`. Its Pages build passed, but deployment
 run [37214914589](https://github.com/Kushagra905/CalcInk/actions/runs/37214914589)
-failed with HTTP 404 and GitHub's instruction to enable Pages. Public publication
-and genuine handwritten offline arithmetic acceptance remain pending. Two
+initially failed with HTTP 404 and GitHub's instruction to enable Pages. Publication
+has since succeeded: on October 5, 2026, build `65c8f66148592467556514b6` passed public
+HTTP/hash verification and disconnected browser checks in Chromium and Edge.
+Genuine handwritten offline arithmetic acceptance remains pending. Two
 synthetic smoke drawings decoded as 1== and 4==, which were correctly rejected; their
 results prove input-dependent inference after reload, not successful handwriting accuracy.
 

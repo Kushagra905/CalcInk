@@ -1,0 +1,65 @@
+{
+  "recordedAt": "2026-10-04T18:58:51.163Z",
+  "url": "https://kushagra905.github.io/CalcInk/",
+  "buildVersion": "65c8f66148592467556514b6",
+  "environment": {
+    "cpu": "12th Gen Intel(R) Core(TM) i5-12450H",
+    "os": "win32 10.0.26200",
+    "browser": "153.0.8010.12",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.8010.12 Safari/537.36",
+    "headless": true
+  },
+  "cachePreparedOnline": true,
+  "disconnectedReload": true,
+  "activeWorkers": 1,
+  "first": {
+    "epoch": 0,
+    "rowId": "row-1",
+    "rowRevision": 6,
+    "requestId": 1,
+    "modelId": "ink-on-comer-int8",
+    "transcript": "1 = =",
+    "outcome": {
+      "kind": "invalid",
+      "code": "MULTIPLE_EQUALS"
+    },
+    "visibleInkBounds": {
+      "x": 118,
+      "y": 50,
+      "width": 106,
+      "height": 62
+    },
+    "timing": {
+      "preprocessMs": 19.40000009536743,
+      "inferenceMs": 545.5999999046326,
+      "evaluateMs": 0.2999997138977051
+    },
+    "normalizedTranscript": null
+  },
+  "second": {
+    "epoch": 1,
+    "rowId": "row-1",
+    "rowRevision": 15,
+    "requestId": 2,
+    "modelId": "ink-on-comer-int8",
+    "transcript": "4 = =",
+    "outcome": {
+      "kind": "invalid",
+      "code": "MULTIPLE_EQUALS"
+    },
+    "visibleInkBounds": {
+      "x": 117,
+      "y": 40,
+      "width": 107,
+      "height": 72
+    },
+    "timing": {
+      "preprocessMs": 10,
+      "inferenceMs": 339.30000019073486,
+      "evaluateMs": 0
+    },
+    "normalizedTranscript": null
+  },
+  "errors": [],
+  "scope": "Synthetic engineering inputs on the public production build. Real local inference works after offline reload and changes with ink. No handwriting accuracy or correct-arithmetic claim."
+}

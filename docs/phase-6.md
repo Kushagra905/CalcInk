@@ -2,10 +2,11 @@
 
 ## Status
 
-Developer A's release checks are implemented on `a/canvas`, integrating main
-`2bffc0e58f547df798bf2276592da02914369ec0` (Developer B's merged Phase 5).
-The implementation has passed local automated checks. Joint Phase 6 acceptance still requires
-physical-device results, the genuine held-out benchmark and public offline verification.
+Developer A's release checks merged into main `515301d`. Developer B adds the
+[final handwriting evaluator, report verifier and runtime measurements](phase-6-recognition.md)
+on `b/recognition-foundation`. Public HTTP/hash and disconnected browser checks
+have now passed in Chromium and Edge. Joint Phase 6 acceptance still requires
+physical-device results and the genuine held-out benchmark.
 
 ## Changes
 
@@ -64,10 +65,11 @@ build version, input type and each observed failure for all three inputs:
 6. On the public build, load online until Ready offline, disconnect, reload,
    and write a fresh genuine equation. Then edit, erase, undo/redo and calculate again.
 
-## Public deployment dependency
+## Public deployment verification
 
-The merged main Pages build passed, but deployment run
-[37214914589](https://github.com/Kushagra905/CalcInk/actions/runs/37214914589)
-failed when creating the Pages deployment: HTTP 404, with GitHub requesting
-that Pages be enabled. Set repository Settings → Pages → Source to GitHub
-Actions, then rerun failed jobs. No public verification result is claimed here.
+The earlier Pages HTTP 404 was resolved after enabling GitHub Actions as the Pages
+source. On October 5, 2026, the public build `65c8f66148592467556514b6` passed
+critical-file/hash verification and fresh-profile offline browser inference in
+Chromium and Edge. Synthetic inputs decoded as `1 = =` and `4 = =`; this proves
+real input-dependent offline inference, not correct handwriting. Reports are
+linked in [performance.md](performance.md#public-build).

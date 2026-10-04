@@ -12,9 +12,14 @@ export default defineConfig({
   build: {
     outDir: "dist-lab",
     rollupOptions: {
-      input: fileURLToPath(
-        new URL("./tools/model-lab/index.html", import.meta.url),
-      ),
+      input: {
+        lab: fileURLToPath(
+          new URL("./tools/model-lab/index.html", import.meta.url),
+        ),
+        final: fileURLToPath(
+          new URL("./tools/model-lab/final.html", import.meta.url),
+        ),
+      },
     },
   },
 });

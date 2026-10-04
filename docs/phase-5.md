@@ -6,8 +6,9 @@ The user changed the current model choice to ink-on CoMER INT8 on October 4, 202
 Notebook, model lab and asset tooling read selectedModelId from the same catalog.
 TrOCR remains an optional candidate with its unchanged license gate.
 
-Local offline engineering and production checks are implemented. Public deployment and
-the genuine handwritten offline arithmetic acceptance sequence remain pending. Two
+Local offline engineering, deployment workflows and asset verification are implemented.
+Public publication and the genuine handwritten offline arithmetic acceptance sequence
+remain pending the Phase 5 commit/merge and live verification. Two
 synthetic smoke drawings decoded as 1== and 4==, which were correctly rejected; their
 results prove input-dependent inference after reload, not successful handwriting accuracy.
 
@@ -70,8 +71,10 @@ npm run preview -- --base /CalcInk/ --port 5174
 npm run test:offline
 ```
 
-The checks workflow prepares assets and runs this prefixed production suite; it does not
-publish the site. Developer B still needs the Pages deployment integration/public URL.
+Feature-branch and PR checks prepare assets and run the prefixed production suite. The
+main-branch Pages workflow now reuses those checks, uploads their tested `dist` artifact,
+publishes it and verifies the public version and critical hashes. Publishing permissions
+exist only in the deployment job. See [Pages setup and handoff](pages-deployment.md).
 Repeat genuine arithmetic, editing, both erasers, undo/redo, clear and a fresh calculation
 after disconnected reload on that public production build. Record device/browser and
 actual outcomes. Phase 5 is not fully accepted until that sequence succeeds.
@@ -79,3 +82,81 @@ actual outcomes. Phase 5 is not fully accepted until that sequence succeeds.
 Phase 1 still needs 24 genuine development samples and a measured trial. Keep the 50
 held-out samples separate for Phase 6. Physical input, performance and release QA remain
 Phase 6; final clean setup/docs/demo remain Phase 7.
+
+## Developer B: asset provenance and Pages delivery
+
+Implemented on `b/recognition-foundation` on October 4, 2026. Developer A's service-worker
+and readiness behavior remains the integrated implementation above.
+
+### Asset and runtime verification
+
+- Model downloads require an immutable 40-character source revision present in each
+  HTTPS source URL. Prepared weights still require the catalog's exact size and SHA-256.
+- Runtime files are derived from the installed ONNX package used by the selected adapter.
+  Its version must match that package's committed lockfile entry. Generated manifests
+  record the runtime package/version; verification compares every runtime size/hash to
+  the installed source, rather than trusting a rewritten generated manifest.
+- The manifest must contain exactly the pinned model and required runtime entries.
+  Duplicate, unexpected, missing, incompatible or unsafe paths fail verification.
+  `assets:prepare` upgrades older generated manifests without committing model binaries.
+- The offline build uses the same provenance check and includes runtime version/backend
+  details in cached attribution. Its existing 900 MB artifact ceiling remains enforced.
+
+### Delivery workflow
+
+- `ci.yml` is reusable. Feature pushes and PRs run checks; `pages.yml` calls the same
+  checks on main before uploading the tested artifact. Main does not launch a second,
+  duplicate standalone CI build. Manual Pages dispatch on another branch cannot publish.
+- Checks install locked Node dependencies, validate code, run logic/asset regressions,
+  prepare/verify assets, exercise the real ink-on worker, build under `/CalcInk/`, verify
+  production isolation and run the five fresh-profile offline browser checks.
+- Download caching is keyed by OS, model catalog, lockfile and asset tooling. Cache hits
+  still pass preparation and verification; the installed runtime is recopied and verified.
+- Actions are pinned to verified commit SHAs. Build/upload and public verification have
+  read-only repository permissions. Only the publish job receives Pages/OIDC write access.
+- The tested build version is carried through reusable-workflow outputs. After deployment,
+  the read-only public check validates that exact version, model/runtime provenance and
+  critical asset hashes. Three attempts allow brief publication propagation; failure
+  remains visible and does not fabricate a successful deployment.
+
+### Files changed in this continuation
+
+| File | Responsibility |
+| --- | --- |
+| `.github/workflows/ci.yml` | Reusable verified build, download cache, real-model tests, tested-version output and conditional artifact upload. |
+| `.github/workflows/pages.yml` | Main-only publication, scoped deployment permissions and public verification. |
+| `scripts/asset-manifest.mjs` | Path, lockfile/runtime provenance and exact manifest validation. |
+| `scripts/model-assets.mjs` | Immutable source checks, verified runtime copying and manifest metadata. |
+| `scripts/offline-build.mjs` | Shared provenance gate and runtime attribution. |
+| `scripts/verify-deployment.mjs` | Hosted build-version, required-file and hash audit. |
+| `tests/scripts/asset-manifest.test.mjs` | Runtime mismatch, tampered manifest, invalid entries/paths and real same-size corruption regressions. |
+| `package.json` | `test:assets` and `verify:deployed` commands; dependencies unchanged. |
+| `README.md`, `docs/phase-5.md`, `docs/pages-deployment.md` | Current status, migration, publication and acceptance instructions. |
+
+### Verification and remaining acceptance
+
+Verified on October 4, 2026:
+
+| Check | Result |
+| --- | --- |
+| TypeScript/Biome | Passed; six existing warnings remain. |
+| Unit tests | All 178 passed. |
+| Asset regression tests | All eight passed, including actual same-size corruption and installed/locked runtime mismatch. |
+| Real-model development Chromium suite | All 24 passed. |
+| Production offline Chromium suite | All five passed. |
+| `assets:prepare` and `assets:verify` | Seven selected model/runtime files verified; runtime provenance recorded. |
+| Pages and model-lab builds | Passed; production mock exclusion passed. |
+| Workflow validation | Both workflows passed actionlint 1.7.12; action SHAs were checked against their official repositories. |
+| Deployment verifier against local `/CalcInk/` preview | Passed: build `1d32557008d3e284ddc09a6d`, 21 assets, 42,004,002 verified bytes. |
+| Deliberately wrong expected deployment version | Rejected with `DEPLOYED_BUILD_VERSION_MISMATCH`, as required. |
+| Working-tree whitespace check | Passed. |
+
+The current Pages artifact totals 90,754,064 bytes, below the existing 900 MB build ceiling.
+No source or dependency changes were committed; generated models/builds remain ignored.
+The local source tree matches main's latest merged tree before this continuation.
+
+Developer B's Phase 5 implementation is complete. Public GitHub Pages returned HTTP 404
+during this work; the new workflow has not been committed, run remotely or used to publish
+a site. Enable Pages, commit and merge as documented in the handoff. Public publication,
+hosted verification and the genuine handwritten offline sequence remain open acceptance
+items. Local engineering checks do not establish a public or accuracy result.

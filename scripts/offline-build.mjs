@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { readdir, readFile, stat, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
+import { installedRuntime, validateModelManifest } from "./asset-manifest.mjs";
 
 const catalog = JSON.parse(
   await readFile("assets/model-candidates.json", "utf8"),
@@ -16,10 +17,6 @@ await writeFile(
   resolve(root, "model-license.txt"),
   await readFile(model.license.file),
 );
-await writeFile(
-  resolve(root, "model-attribution.txt"),
-  `CalcInk model: ${model.modelId}\nRevision: ${model.revision}\nSource: ${model.source}\nLicense: ${model.license.id}\nEvidence: ${model.license.evidence}\n${model.license.note}\n`,
-);
 const htmlPath = resolve(root, "index.html");
 const html = (await readFile(htmlPath, "utf8")).replace(
   /\s*<meta name="calcink-build" content="[a-f0-9]+">/,
@@ -30,11 +27,15 @@ const modelPath = `models/${model.modelId}/manifest.json`;
 const modelManifest = JSON.parse(
   await readFile(resolve(root, modelPath), "utf8"),
 );
-if (
-  modelManifest.modelId !== model.modelId ||
-  modelManifest.revision !== model.revision
-)
-  throw new Error("MODEL_MANIFEST_MISMATCH");
+validateModelManifest(
+  modelManifest,
+  model,
+  await installedRuntime(resolve("."), model.adapter),
+);
+await writeFile(
+  resolve(root, "model-attribution.txt"),
+  `CalcInk model: ${model.modelId}\nRevision: ${model.revision}\nSource: ${model.source}\nLicense: ${model.license.id}\nEvidence: ${model.license.evidence}\nRuntime: ${modelManifest.runtime.package}@${modelManifest.runtime.version}\nBackend: local single-threaded WASM in a dedicated worker\n${model.license.note}\n`,
+);
 const source = await readFile("scripts/service-worker.js", "utf8");
 const hash = (data) => createHash("sha256").update(data).digest("hex");
 const paths = (await readdir(root, { recursive: true })).map((path) =>

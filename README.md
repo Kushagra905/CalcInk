@@ -102,6 +102,7 @@ See [Phase 3 integration](docs/phase-3.md) and [Phase 4 editing](docs/phase-4.md
 ```sh
 npm run check
 npm run test:unit
+npm run test:assets
 npx playwright install chromium
 npm run test:e2e
 npm run assets:prepare
@@ -115,8 +116,10 @@ Playwright starts the mock server automatically and tests the real browser-worke
 Unit and mock browser tests need no model files. Production builds require prepared,
 verified model assets. Public offline acceptance and genuine handwriting evaluation remain pending.
 
-CI also prepares the selected assets, builds under `/CalcInk/`, and runs actual production
-offline checks. It does not deploy.
+CI prepares and verifies the selected assets, builds under `/CalcInk/`, and runs real
+model and production offline checks. Feature branches and pull requests run checks only.
+The main-branch Pages workflow reuses the same checks, publishes their tested artifact,
+then verifies the hosted build version and critical asset hashes.
 Production verification attempts a mock-mode build and checks the actual output for mock-worker/fixture leakage.
 
 ## Integration with Developer B
@@ -192,6 +195,30 @@ tab ink/history; save any wanted captures first. Old caches retire after activat
 After `build:pages`, run `npm run test:offline` for fresh-profile production checks under
 the repository base path. See [Phase 5 implementation and acceptance](docs/phase-5.md).
 The public Pages deployment and genuine offline arithmetic demonstration remain pending.
+
+## GitHub Pages publication
+
+Phase 5's deployment code is implemented on the recognition branch. Enable **Settings →
+Pages → Build and deployment → Source: GitHub Actions** in the repository, then merge the
+Phase 5 pull request into `main`. The **CalcInk Pages** workflow builds, publishes and
+checks the public artifact; feature branches cannot publish. See
+[deployment setup, commit commands and acceptance](docs/pages-deployment.md).
+
+The expected URL is `https://kushagra905.github.io/CalcInk/`; it is not a verified live
+deployment yet. The workflow reports the actual URL after publishing. To inspect a
+published deployment yourself:
+
+```sh
+npm run verify:deployed -- https://kushagra905.github.io/CalcInk/
+```
+
+The verifier checks the build version, required URLs and SHA-256 hashes against the
+declared artifact and locked runtime. It does not measure handwriting accuracy or prove
+browser offline interaction. Follow the genuine offline acceptance sequence in the guide.
+
+Generated model manifests now record the ONNX runtime package/version and must exactly
+match installed runtime files from `package-lock.json`. If an older prepared manifest
+fails verification, run `npm run assets:prepare` to regenerate it before building.
 
 ## Shared integration status
 

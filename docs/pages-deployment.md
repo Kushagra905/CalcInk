@@ -7,7 +7,12 @@ The deployment implementation is merged into main as `2bffc0e`. On October 4, 20
 passed its build checks but failed deployment with HTTP 404 and GitHub's request to
 enable Pages. The public verification job was skipped. The expected public URL is
 `https://kushagra905.github.io/CalcInk/`.
-Do not present it as a live demo until the Pages workflow and public check pass.
+That initial failure is historical. On October 5, 2026, the site was live and the
+HTTP/hash verifier passed build `65c8f66148592467556514b6`: 21 critical assets,
+42,004,089 verified bytes. Fresh-profile public offline checks also passed in
+[Chromium](evidence/phase-6-public-chromium-offline.json) and
+[Edge](evidence/phase-6-public-edge-offline.json). Their synthetic marks yielded
+`1 = =` and `4 = =`, correctly rejected; genuine offline arithmetic remains pending.
 
 Ink-on CoMER INT8 remains selected. Developer A's verified offline caching is integrated;
 Developer B supplies the asset provenance checks and publishing workflow. No model
@@ -36,7 +41,8 @@ stay ignored; the existing main workflow prepares them and publishes its tested 
    Re-run failed jobs**. Future changes publish only after their PR merges into main.
 2. Open **Actions → CalcInk Pages**. Its build job runs the reusable checks and uploads
    the exact tested production artifact. The deploy job publishes that artifact into
-   `github-pages`; the read-only public job checks its tested version and asset hashes.
+   `github-pages`; the read-only public job checks its tested version and asset hashes,
+   then tests disconnected browser reload with real recognition.
 3. After all jobs pass, open the URL shown by the deploy job/environment. An Actions
    failure or an expected URL alone is not evidence of successful publication.
 4. If a rerun is needed, use **Run workflow** on `main`. Dispatch on another branch is
@@ -53,6 +59,7 @@ With locked dependencies installed locally:
 
 ```powershell
 npm run verify:deployed -- https://kushagra905.github.io/CalcInk/
+npm run test:public
 ```
 
 This command checks the app/model manifest, critical asset sizes and hashes, runtime

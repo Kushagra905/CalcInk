@@ -57,3 +57,9 @@ jobs:
             if [ "$attempt" -lt 3 ]; then sleep 10; fi
           done
           exit 1
+      - run: npx playwright install --with-deps chromium
+      - name: Verify disconnected public reload with real recognition
+        env:
+          CALCINK_PUBLIC_URL: ${{ needs.deploy.outputs.page_url }}
+          CALCINK_EXPECTED_VERSION: ${{ needs.build.outputs.offline_version }}
+        run: npm run test:public

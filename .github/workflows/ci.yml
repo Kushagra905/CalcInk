@@ -49,6 +49,7 @@ jobs:
           CALCINK_MODEL_TEST: "1"
       - run: npm run build:pages
       - run: npm run build:lab
+      - run: npm run test:evaluation
       - run: npm run verify:production
       - run: npm run test:offline
       - run: npm run test:performance

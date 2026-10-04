@@ -1,0 +1,12 @@
+<!doctype html>
+<html lang="en">
+  <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>CalcInk · Final evaluation</title></head>
+  <body>
+    <main>
+      <header><p class="eyebrow">CALCINK / DEVELOPER B / PHASE 6</p><h1>Final held-out evaluation</h1><p>Run once after freezing the model and preprocessing. Keep every failure. Do not tune against these samples or correct model text.</p></header>
+      <section><h2>1. Import genuine capture exports</h2><p>Use the notebook’s guided capture panel: 25 held-out samples per writer. You can select both writers’ exports together. The development lab’s bare fixtures lack the required writer and device provenance.</p><label>Handwriting exports<input id="files" type="file" accept="application/json,.json" multiple></label><p id="import-status" role="status">No samples imported.</p></section>
+      <section><h2>2. Record the measurement device</h2><div class="controls"><label>Laptop / CPU<input id="device" type="text" required></label><label>OS and version<input id="os" type="text" required></label></div><p>Browser, DPR and logical CPU count are recorded automatically. Close other heavy apps and keep this tab visible. Model download, hash verification and initialization are measured separately; one warm-up is excluded.</p><label><input id="confirm" type="checkbox"> Both writers created these samples by hand, the 50 samples were not used for tuning, and this run has no manual corrections.</label></section>
+      <section><h2>3. Run the frozen WASM model</h2><p>Uses the notebook’s 350 ms debounce and recognition coordinator. Total update is measured from document commit to the next animation frame after accepted result text is displayed. It is a display-readiness proxy, not physical pen-to-pixel latency. The batch has no competing row workload.</p><div class="controls"><button id="run" disabled>Evaluate all 50 samples</button><button id="export" disabled>Export final report</button></div><p id="status" role="status" aria-live="polite">Build the lab with npm run build:lab, then use npm run preview:lab.</p><pre id="result">No result yet.</pre><pre id="report">No report yet.</pre></section>
+    </main><script type="module" src="./final.ts"></script>
+  </body>
+</html>

@@ -29,7 +29,18 @@ held-out samples and warmed p95 total update latency at most 2 seconds. Record
 actual results if either target is missed. Do not silently repair duplicate
 equals or call invalid decoding a successful calculation.
 
-The existing [Phase 1 evaluation instructions](phase-1-model-evaluation.md)
-describe capture, report export and independent metric verification. Final
-evidence must include the tested commit/build, model/runtime version, device,
-OS/browser, genuine sample count, failures and exported benchmark report.
+The [Developer B Phase 6 workflow](phase-6-recognition.md) now implements the
+50-sample final page and independent verifier. Build/preview the lab and open
+`/tools/model-lab/final.html`; import the guided-capture exports after freezing the
+model. The ordinary Phase 1 lab remains for development comparisons.
+
+The final report retains the tested commit/artifact digest, model/runtime version,
+device, OS/browser, capture metadata, raw transcripts, failures and stage timings.
+`npm run phase6:report -- <report.json> --require-targets` checks the frozen artifact
+and exits 2 when a measured target is missed. Total update includes the coordinator's
+350 ms debounce and ends at the next frame after result text display; it is a
+display-readiness proxy, not physical paint/pen latency. Initialization and warm-up
+are excluded from that distribution. Cache state is not controlled for initialization.
+
+No genuine benchmark is added by the implementation tests: synthetic reports stay
+under ignored test output and do not enter the model acceptance evidence.

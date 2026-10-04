@@ -8,7 +8,8 @@ The foundation includes a React/TypeScript/Vite notebook, three aligned Canvas 2
 smooth pen capture, immutable document snapshots/edit events, global undo/redo, undoable clear,
 both erasers, reactive recognition scheduling and accepted inline answers. The notebook
 connects to the selected local ink-on CoMER INT8 model. Versioned offline preparation is
-implemented; genuine handwriting evaluation and public deployment verification remain pending.
+implemented. Public deployment/hash and synthetic offline browser checks have passed;
+genuine handwriting evaluation remains pending.
 
 Use Node.js 22.12+ (tested here with Node.js 24). Dependencies are pinned in `package-lock.json`.
 
@@ -114,12 +115,14 @@ npm run preview
 `check` runs TypeScript plus Biome formatting/linting. `npm run format` applies formatting.
 Playwright starts the mock server automatically and tests the real browser-worker path.
 Unit and mock browser tests need no model files. Production builds require prepared,
-verified model assets. Public offline acceptance and genuine handwriting evaluation remain pending.
+verified model assets. Genuine handwriting and physical offline arithmetic acceptance remain pending.
 
 CI prepares and verifies the selected assets, builds under `/CalcInk/`, and runs real
 model and production offline checks. Feature branches and pull requests run checks only.
 The main-branch Pages workflow reuses the same checks, publishes their tested artifact,
-then verifies the hosted build version and critical asset hashes.
+then verifies the hosted build version, critical asset hashes and disconnected public
+reload with real recognition. CI also exercises the final-evaluator browser/CLI path
+with synthetic regression data; this is not the genuine accuracy gate.
 Production verification attempts a mock-mode build and checks the actual output for mock-worker/fixture leakage.
 
 ## Phase 6 release checks
@@ -182,12 +185,12 @@ that explicitly selecting unresolved TrOCR remains blocked:
 npm run assets:prepare -- ink-on-comer-int8
 npm run assets:verify -- ink-on-comer-int8
 $env:CALCINK_MODEL_TEST = '1'
-npm run test:e2e -- --workers=4
+npm run test:e2e -- --workers=2
 Remove-Item Env:\CALCINK_MODEL_TEST
 ```
 
-Ordinary CI skips that optional development check, but its production offline suite
-runs real ink-on with prepared assets. Automated marks never count as genuine handwriting
+CI runs the model-enabled development check and its production offline suite
+with prepared ink-on assets. Automated marks never count as genuine handwriting
 or measured development accuracy.
 
 ## Phase 5 offline preparation
@@ -211,22 +214,24 @@ tab ink/history; save any wanted captures first. Old caches retire after activat
 
 After `build:pages`, run `npm run test:offline` for fresh-profile production checks under
 the repository base path. See [Phase 5 implementation and acceptance](docs/phase-5.md).
-The public Pages deployment and genuine offline arithmetic demonstration remain pending.
+The public Pages deployment has passed HTTP/hash and synthetic offline browser checks.
+The genuine offline arithmetic demonstration remains pending.
 
 ## GitHub Pages publication
 
-Phase 5's deployment code is merged into `main`. Enable **Settings → Pages → Build and
-deployment → Source: GitHub Actions**, then rerun the failed deployment job. The
+Phase 5's deployment code is merged into `main`, and the public site is live. Its
+Pages source is **Settings → Pages → Build and deployment → Source: GitHub Actions**. The
 **CalcInk Pages** workflow builds, publishes and
 checks the public artifact; feature branches cannot publish. See
 [deployment setup, commit commands and acceptance](docs/pages-deployment.md).
 
-The expected URL is `https://kushagra905.github.io/CalcInk/`; it is not a verified live
-deployment yet. The workflow reports the actual URL after publishing. To inspect a
-published deployment yourself:
+The verified URL is [CalcInk](https://kushagra905.github.io/CalcInk/). Build
+`65c8f66148592467556514b6` passed public HTTP/hash and fresh-profile disconnected
+reload tests in Chromium and Edge on October 5, 2026. To inspect publication yourself:
 
 ```sh
 npm run verify:deployed -- https://kushagra905.github.io/CalcInk/
+npm run test:public
 ```
 
 The verifier checks the build version, required URLs and SHA-256 hashes against the
@@ -258,3 +263,29 @@ The lab displays raw/normalized text, readable outcomes and all three timing fie
 Held-out mode disables recognition and benchmarking and exports its samples separately.
 Ink-on CoMER INT8 is selected; genuine handwriting validation remains pending.
 TrOCR remains optional and blocked by its unresolved weight-license evidence.
+
+## Developer B — Phase 6 final evaluation
+
+The separate final page imports the guided capture exports: 50 genuine held-out
+samples, 25 per writer. It uses the same notebook coordinator and pinned WASM model,
+preserves failures, separates transcription from arithmetic accuracy, and reports
+stage timings plus commit-to-result display readiness including the 350 ms debounce.
+
+```powershell
+npm run build:lab
+npm run preview:lab
+```
+
+Open `http://127.0.0.1:4173/tools/model-lab/final.html`, import the exports and record
+the device/OS. Keep the model frozen and the tab visible. Export and verify:
+
+```powershell
+npm run phase6:report -- 'C:\path\calcink-held-out-final-report.json' --require-targets
+```
+
+The verifier checks the frozen lab/artifact and capture hashes and recomputes the
+metrics. Targets are at least 45/50 exact transcripts and warmed update p95 ≤2 s;
+the target form exits 2 when they are missed. Genuine exports have not been supplied
+yet, so no handwriting accuracy is claimed. See the
+[Phase 6 workflow](docs/phase-6-recognition.md) and
+[recorded worker/WASM evidence](docs/performance.md).

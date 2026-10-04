@@ -4,6 +4,11 @@ import { writeFile } from "node:fs/promises";
 import os from "node:os";
 import { expect, type Page, test } from "@playwright/test";
 import type { RecognitionResponse } from "../../src/recognition/protocol";
+import {
+  observeRecognitionMemory,
+  pageMemory,
+  trackWasmAllocations,
+} from "./worker-memory";
 
 declare global {
   interface Window {
@@ -72,6 +77,10 @@ test("measure 60 seconds of drawing during real inference and 200 edit/clear cyc
   page,
   browser,
 }) => {
+  let wasmTracking: Promise<void> | null = null;
+  page.on("worker", (worker) => {
+    wasmTracking = trackWasmAllocations(worker);
+  });
   await page.addInitScript(() => {
     const qa: Window["calcinkPhase6"] = {
       phase: "off",
@@ -251,6 +260,10 @@ test("measure 60 seconds of drawing during real inference and 200 edit/clear cyc
     0,
   );
   const cdp = await page.context().newCDPSession(page);
+  if (!wasmTracking) throw new Error("Recognition worker was not observed");
+  await wasmTracking;
+  const runtimeMemory = await observeRecognitionMemory(browser);
+  const workerHeap = [{ cycle: 0, ...(await runtimeMemory.sample()) }];
   const heap: { cycle: number; usedSize: number; totalSize: number }[] = [];
   await page.getByRole("button", { name: "Clear", exact: true }).click();
   await page.evaluate(() => {
@@ -286,6 +299,7 @@ test("measure 60 seconds of drawing during real inference and 200 edit/clear cyc
       await cdp.send("HeapProfiler.collectGarbage");
       const { usedSize, totalSize } = await cdp.send("Runtime.getHeapUsage");
       heap.push({ cycle, usedSize, totalSize });
+      workerHeap.push({ cycle, ...(await runtimeMemory.sample()) });
       console.log(
         `Completed ${cycle}/200 real-model edit/clear cycles; main-thread JS heap ${usedSize} bytes.`,
       );
@@ -294,6 +308,29 @@ test("measure 60 seconds of drawing during real inference and 200 edit/clear cyc
   await page.evaluate(() => {
     window.calcinkPhase6.phase = "off";
   });
+  // Sample only after Clear and before undo reintroduces old ink/inference.
+  const afterIdle = [];
+  for (let seconds = 1; seconds <= 10; seconds++) {
+    await page.waitForTimeout(1000);
+    if ([2, 5, 10].includes(seconds))
+      afterIdle.push({
+        seconds,
+        worker: await runtimeMemory.sample(),
+        page: await pageMemory(cdp),
+        activeWorkers: page.workers().length,
+      });
+  }
+  await runtimeMemory.dispose();
+  const clearSurfaceEmpty = await page
+    .locator('[data-layer="ink"]')
+    .evaluate((canvas: HTMLCanvasElement) => {
+      const pixels = canvas
+        .getContext("2d")
+        ?.getImageData(0, 0, canvas.width, canvas.height).data;
+      if (!pixels) throw new Error("Missing ink surface");
+      for (let i = 3; i < pixels.length; i += 4) if (pixels[i]) return false;
+      return true;
+    });
   for (let i = 0; i < 100; i++)
     await page.getByRole("button", { name: "Undo", exact: true }).click();
   await expect(
@@ -354,7 +391,12 @@ test("measure 60 seconds of drawing during real inference and 200 edit/clear cyc
         ),
       ),
       postGcMainThreadJsHeap: heap,
+      postGcRecognitionWorker: workerHeap,
+      afterIdle,
+      memoryScope:
+        "CDP per-isolate JS heap, embedder GC heap and backing storage. A test-only WebAssembly.Memory constructor wrapper installed at worker creation records WeakRefs; each surviving buffer.byteLength is reserved WASM linear memory, not allocator live bytes or process RSS. No strong memory references persist. Forced GC is diagnostic and is excluded from frame/latency measurements.",
       undoCommandsRetained: 100,
+      clearSurfaceEmpty,
     },
     workers: {
       created: final.created,
@@ -378,6 +420,7 @@ test("measure 60 seconds of drawing during real inference and 200 edit/clear cyc
   expect(report.longTaskObserverSupported).toBe(true);
   expect(report.overlappingRealResults).toBeGreaterThan(0);
   expect(cycles.length).toBeGreaterThanOrEqual(200);
+  expect(clearSurfaceEmpty).toBe(true);
   expect(final.maxWorkers).toBe(1);
   expect(page.workers()).toHaveLength(1);
   expect(final.errors).toEqual([]);

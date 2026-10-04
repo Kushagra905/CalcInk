@@ -1,0 +1,244 @@
+{
+  "baseCommit": "515301dd4cb377d729f30a314d23fb0d2126c577",
+  "applicationDiffSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "buildVersion": "65c8f66148592467556514b6",
+  "environment": {
+    "cpu": "12th Gen Intel(R) Core(TM) i5-12450H",
+    "logicalCpus": 12,
+    "platform": "win32",
+    "osRelease": "10.0.26200",
+    "arch": "x64",
+    "browser": "153.0.8010.12",
+    "headless": true,
+    "viewport": {
+      "width": 1280,
+      "height": 720
+    },
+    "dpr": 2
+  },
+  "methodology": "Synthetic pointer moves on an actual captured mouse pointer; 2-second strokes and short lifts for repeated other-row recognition. rAF cadence and input-to-next-rAF are proxies, not physical display/pen latency. Post-GC heap covers the main-thread JS isolate, not worker/WASM/GPU/process memory. No genuine samples or accuracy claims.",
+  "elapsedMs": 64307.10000038147,
+  "heldPointerMs": 60953.5,
+  "pointerMoves": 3599,
+  "idleFrames": {
+    "count": 120,
+    "medianMs": 16.699999999999818,
+    "p95Ms": 16.700000000000728,
+    "maxMs": 16.800000000000182
+  },
+  "drawingFrames": {
+    "count": 3817,
+    "medianMs": 16.69999999999709,
+    "p95Ms": 16.799999999995634,
+    "maxMs": 33.400000000001455
+  },
+  "observedRafPerSecond": 59.355809855791314,
+  "referenceFrameBudgetMs": 16.699999999999818,
+  "estimatedMissedSlots": 40,
+  "estimatedMissedSlotPercent": 1.0370754472387866,
+  "inputToNextRaf": {
+    "count": 3599,
+    "medianMs": 16.40000009536743,
+    "p95Ms": 18.399999618530273,
+    "maxMs": 45.700000286102295
+  },
+  "longTaskObserverSupported": true,
+  "longTasks": [],
+  "domMutations": 205,
+  "overlappingRealResults": 30,
+  "cycles": {
+    "requested": 200,
+    "responses": 200,
+    "syntheticWorkerTimings": {
+      "count": 200,
+      "medianMs": 431.09999990463257,
+      "p95Ms": 649.2000002861023,
+      "maxMs": 1181.4000000953674
+    },
+    "postGcMainThreadJsHeap": [
+      {
+        "cycle": 20,
+        "usedSize": 4388600,
+        "totalSize": 5627904
+      },
+      {
+        "cycle": 50,
+        "usedSize": 4302308,
+        "totalSize": 5365760
+      },
+      {
+        "cycle": 100,
+        "usedSize": 4410768,
+        "totalSize": 5365760
+      },
+      {
+        "cycle": 150,
+        "usedSize": 4464424,
+        "totalSize": 5365760
+      },
+      {
+        "cycle": 200,
+        "usedSize": 4522608,
+        "totalSize": 5627904
+      }
+    ],
+    "postGcRecognitionWorker": [
+      {
+        "cycle": 0,
+        "usedSize": 2478228,
+        "totalSize": 2854912,
+        "embedderHeapUsedSize": 41272,
+        "backingStorageSize": 496087,
+        "wasm": {
+          "count": 1,
+          "linearMemoryBytes": [
+            41943040
+          ]
+        }
+      },
+      {
+        "cycle": 20,
+        "usedSize": 2578596,
+        "totalSize": 3379200,
+        "embedderHeapUsedSize": 41520,
+        "backingStorageSize": 496087,
+        "wasm": {
+          "count": 1,
+          "linearMemoryBytes": [
+            41943040
+          ]
+        }
+      },
+      {
+        "cycle": 50,
+        "usedSize": 2616432,
+        "totalSize": 3379200,
+        "embedderHeapUsedSize": 41008,
+        "backingStorageSize": 496087,
+        "wasm": {
+          "count": 1,
+          "linearMemoryBytes": [
+            41943040
+          ]
+        }
+      },
+      {
+        "cycle": 100,
+        "usedSize": 2650616,
+        "totalSize": 3379200,
+        "embedderHeapUsedSize": 40896,
+        "backingStorageSize": 496087,
+        "wasm": {
+          "count": 1,
+          "linearMemoryBytes": [
+            41943040
+          ]
+        }
+      },
+      {
+        "cycle": 150,
+        "usedSize": 2615272,
+        "totalSize": 3379200,
+        "embedderHeapUsedSize": 40544,
+        "backingStorageSize": 496049,
+        "wasm": {
+          "count": 1,
+          "linearMemoryBytes": [
+            41943040
+          ]
+        }
+      },
+      {
+        "cycle": 200,
+        "usedSize": 2612548,
+        "totalSize": 3379200,
+        "embedderHeapUsedSize": 40896,
+        "backingStorageSize": 496049,
+        "wasm": {
+          "count": 1,
+          "linearMemoryBytes": [
+            41943040
+          ]
+        }
+      }
+    ],
+    "afterIdle": [
+      {
+        "seconds": 2,
+        "worker": {
+          "usedSize": 2612548,
+          "totalSize": 3379200,
+          "embedderHeapUsedSize": 40896,
+          "backingStorageSize": 496049,
+          "wasm": {
+            "count": 1,
+            "linearMemoryBytes": [
+              41943040
+            ]
+          }
+        },
+        "page": {
+          "usedSize": 4522608,
+          "totalSize": 5103616,
+          "embedderHeapUsedSize": 1003248,
+          "backingStorageSize": 263456
+        },
+        "activeWorkers": 1
+      },
+      {
+        "seconds": 5,
+        "worker": {
+          "usedSize": 2612548,
+          "totalSize": 3379200,
+          "embedderHeapUsedSize": 40896,
+          "backingStorageSize": 496049,
+          "wasm": {
+            "count": 1,
+            "linearMemoryBytes": [
+              41943040
+            ]
+          }
+        },
+        "page": {
+          "usedSize": 4522596,
+          "totalSize": 4841472,
+          "embedderHeapUsedSize": 909568,
+          "backingStorageSize": 263456
+        },
+        "activeWorkers": 1
+      },
+      {
+        "seconds": 10,
+        "worker": {
+          "usedSize": 2612548,
+          "totalSize": 3379200,
+          "embedderHeapUsedSize": 40896,
+          "backingStorageSize": 496049,
+          "wasm": {
+            "count": 1,
+            "linearMemoryBytes": [
+              41943040
+            ]
+          }
+        },
+        "page": {
+          "usedSize": 4522608,
+          "totalSize": 5103616,
+          "embedderHeapUsedSize": 921696,
+          "backingStorageSize": 263456
+        },
+        "activeWorkers": 1
+      }
+    ],
+    "memoryScope": "CDP per-isolate JS heap, embedder GC heap and backing storage. A test-only WebAssembly.Memory constructor wrapper installed at worker creation records WeakRefs; each surviving buffer.byteLength is reserved WASM linear memory, not allocator live bytes or process RSS. No strong memory references persist. Forced GC is diagnostic and is excluded from frame/latency measurements.",
+    "undoCommandsRetained": 100,
+    "clearSurfaceEmpty": true
+  },
+  "workers": {
+    "created": 1,
+    "peak": 1,
+    "active": 1
+  },
+  "browserErrors": [],
+  "workerErrors": []
+}

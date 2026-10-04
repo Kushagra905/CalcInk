@@ -7,17 +7,19 @@ On-device handwritten math calculator for the Inter IIT Software Development Boo
 The foundation includes a React/TypeScript/Vite notebook, three aligned Canvas 2D layers,
 smooth pen capture, immutable document snapshots/edit events, global undo/redo, undoable clear,
 both erasers, reactive recognition scheduling and accepted inline answers. The notebook
-connects to the selected local TrOCR model; its unresolved weight-license evidence currently
-blocks preparation/loading. Offline caching and genuine TrOCR validation remain pending.
+connects to the selected local ink-on CoMER INT8 model. Versioned offline preparation is
+implemented; genuine handwriting evaluation and public deployment verification remain pending.
 
 Use Node.js 22.12+ (tested here with Node.js 24). Dependencies are pinned in `package-lock.json`.
 
 ```sh
 npm ci
-npm run dev:mock
+npm run assets:prepare
+npm run dev
 ```
 
-Open the local URL printed by Vite. **Load sample fixture** sends synthetic ink through
+Open the local URL printed by Vite for real ink-on recognition. To collect handwriting or
+exercise fixed development fixtures, run `npm run dev:mock` separately. **Load sample fixture** sends synthetic ink through
 document events, the development coordinator, and an actual module worker, then displays
 the supplied `18+4×3=` transcript and calculated `30` on row 1. This is a fixed development
 fixture, not recognition of the ink you draw. The same coordinator/worker protocol handles
@@ -54,7 +56,7 @@ Use consistent writer slots across devices; totals shown are for this browser, n
 The new plan uses `calcink-handwriting-v2`; the earlier database is left intact. Exported
 strokes use row-1 coordinates for the lab and retain their original row and capture metadata.
 
-Share **only the development export** with B for TrOCR validation. Recognition is disconnected
+Share **only the development export** with B for ink-on validation. Recognition is disconnected
 during held-out capture; returning to development clears unsaved ink before reconnecting.
 Keep held-out exports separate until the final evaluation. See [Phase 1 status and handoff](docs/phase-1.md).
 
@@ -95,6 +97,7 @@ npm run check
 npm run test:unit
 npx playwright install chromium
 npm run test:e2e
+npm run assets:prepare
 npm run build
 npm run verify:production
 npm run preview
@@ -102,9 +105,11 @@ npm run preview
 
 `check` runs TypeScript plus Biome formatting/linting. `npm run format` applies formatting.
 Playwright starts the mock server automatically and tests the real browser-worker path.
-Unit tests need no model files. The model lab provides `assets:prepare`/`assets:verify` for local model assets. Final release/offline checks remain pending.
+Unit and mock browser tests need no model files. Production builds require prepared,
+verified model assets. Public offline acceptance and genuine handwriting evaluation remain pending.
 
-The initial CI workflow runs these foundation checks on pushes and pull requests; it does not deploy.
+CI also prepares the selected assets, builds under `/CalcInk/`, and runs actual production
+offline checks. It does not deploy.
 Production verification attempts a mock-mode build and checks the actual output for mock-worker/fixture leakage.
 
 ## Integration with Developer B
@@ -130,11 +135,10 @@ the notebook's development captures, and export measured development reports. Th
 port 5173, so stop an existing notebook server before starting `dev:lab`. The same lab URL is
 also available while `dev:mock` runs. Keep held-out exports separate until Phase 6.
 
-**MathWriting TrOCR INT8 is the user-selected final model** (`trocr-mathwriting-int8`).
-The lab and asset commands default to this selection. Its preparation/loading remains
-blocked because its weight-license evidence is unresolved; its browser inference and
-genuine handwriting accuracy still require verification. ink-on remains available for
-comparison: select it explicitly in the lab and pass `ink-on-comer-int8` to both asset commands.
+**ink-on CoMER INT8 is the current user-selected model** (`ink-on-comer-int8`), replacing
+the earlier TrOCR decision. Notebook, lab and asset commands share this default. Real
+browser/WASM inference is verified; genuine handwriting accuracy and warmed p95 remain
+unmeasured. TrOCR remains an optional candidate with its existing weight-license gate.
 
 Read [Phase 1 model evaluation](docs/phase-1-model-evaluation.md) for sample capture, benchmark targets, loading integration, asset provenance, and review commands.
 
@@ -144,8 +148,8 @@ npm run test:unit
 npm run build:lab
 ```
 
-The optional real-model browser check exercises ink-on, not TrOCR. Prepare those
-comparison assets explicitly before enabling it in PowerShell:
+The optional development-server real-model check exercises ink-on and also verifies
+that explicitly selecting unresolved TrOCR remains blocked:
 
 ```powershell
 npm run assets:prepare -- ink-on-comer-int8
@@ -155,13 +159,37 @@ npm run test:e2e -- --workers=4
 Remove-Item Env:\CALCINK_MODEL_TEST
 ```
 
-Ordinary CI skips this asset-dependent check. Automated marks never count as genuine
-handwriting or measured development accuracy.
+Ordinary CI skips that optional development check, but its production offline suite
+runs real ink-on with prepared assets. Automated marks never count as genuine handwriting
+or measured development accuracy.
+
+## Phase 5 offline preparation
+
+```sh
+npm run assets:prepare
+npm run build:pages
+npm run preview -- --base /CalcInk/ --port 5174
+```
+
+Open `http://127.0.0.1:5174/CalcInk/`. This is the production notebook with real ink-on,
+not the fixed mock fixture. **Ready offline** requires both hash-verified critical caches
+and successful model initialization. Cached files alone cannot claim readiness.
+Initial preparation needs connectivity; errors offer retry without discarding ink.
+Missing/corrupted entries and storage quota failures revoke cache readiness. Reconnection
+retries preparation. Model attribution and Apache-2.0 license are included in the deployment.
+
+Updates wait for explicit activation. Reload is disabled while a gesture or committed ink
+is present, and other CalcInk tabs must close before applying an update. Reload still clears
+tab ink/history; save any wanted captures first. Old caches retire after activation.
+
+After `build:pages`, run `npm run test:offline` for fresh-profile production checks under
+the repository base path. See [Phase 5 implementation and acceptance](docs/phase-5.md).
+The public Pages deployment and genuine offline arithmetic demonstration remain pending.
 
 ## Shared integration status
 
 The readonly document types, shared sample plan/import format and quadratic replay now serve
 both implementations. Notebook and lab share the nested worker protocol and TrialClient.
 The notebook's coordinator supplies reactive scheduling and accepted callbacks. The store
-owns revisions/epoch, and history never rolls them back. Genuine TrOCR trial evidence is
+owns revisions/epoch, and history never rolls them back. Genuine ink-on trial evidence is
 still pending; selection alone does not demonstrate recognition accuracy.

@@ -1,8 +1,13 @@
 # Phase 3: reactive recognition and inline results
 
+The current selected model is ink-on CoMER INT8, following the user's later decision.
+The notebook and production offline build run real ink-on locally. Its genuine handwritten
+arithmetic/edit demonstration and 24-sample evaluation remain pending. TrOCR's licensing
+gate remains on that optional candidate; it no longer blocks the selected application.
+
 ## Implementation
 
-- Production `connect.ts` uses the catalog's selected TrOCR candidate. The lab and asset
+- Production `connect.ts` uses the catalog's selected candidate. The lab and asset
   commands use that same choice. The existing license gate remains enforced.
 - Notebook and development fixtures use one coordinator, TrialClient and nested worker
   protocol. The obsolete duplicate flat protocol/model adapter placeholders were removed;
@@ -26,7 +31,7 @@
   output and runtime failure. Equivalent * and / operators display as × and ÷. The model
   receives ink operations only; paper, status, cursor and result pixels stay outside crops.
 
-## Evidence and remaining requirement
+## Earlier TrOCR-selected milestone evidence
 
 TypeScript/Biome, 56 unit tests, the full 21-test Chromium suite, both builds and local
 comparison asset verification passed on October 4, 2026. Browser checks cover inline
@@ -46,4 +51,14 @@ A separate production-build Chromium check passed: the real notebook shows the s
 TrOCR gate, contains no mock UI, accepts ink and preserves its exact bitmap on retry.
 There were no browser errors or external requests. The temporary preview/browser were stopped.
 
-Offline readiness/deployment remains Phase 5; physical-device/performance QA remains Phase 6.
+## Current ink-on milestone
+
+The 56 unit tests and 21 model-enabled development browser tests passed again after the
+selection change. Five additional production offline checks passed with real ink-on,
+including a fresh disconnected reload and input-dependent model transcripts.
+Two synthetic engineering drawings decoded as `1==` and `4==`; the arithmetic parser
+rejected their duplicate equals signs. These are measured failures, not valid calculations
+or human handwriting evaluation. The release demonstration remains pending genuine inputs.
+
+Phase 5 records cache/retry/update implementation and its local verification.
+Public deployment acceptance and physical-device/performance QA remain pending.

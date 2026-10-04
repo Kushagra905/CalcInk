@@ -37,5 +37,6 @@ The actual scaled notebook/OffscreenCanvas comparison allows one byte for Chromi
 antialias quantization in alpha/premultiplied color; this bound was measured on the failing
 comparison before being applied. Undo/redo and cancellation checks remain byte-exact.
 
-No genuine handwriting accuracy, physical pen/touch hardware, 60 FPS, offline caching or
-release-level performance result is claimed. The TrOCR runtime gate is recorded in phase-3.md.
+No genuine handwriting accuracy, physical pen/touch hardware, 60 FPS or release-level
+performance result is claimed. Phase 5 records subsequent ink-on offline implementation
+and verification; TrOCR remains an optional candidate with its existing runtime gate.

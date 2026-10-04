@@ -17,7 +17,8 @@ test("real local WASM worker initializes, infers and evaluates without remote re
       remote.push(request.url());
   });
   await page.goto("/tools/model-lab/");
-  await expect(page.locator("#model")).toHaveValue("trocr-mathwriting-int8");
+  await expect(page.locator("#model")).toHaveValue("ink-on-comer-int8");
+  await page.locator("#model").selectOption("trocr-mathwriting-int8");
   await page.locator("#load").click();
   await expect(page.locator("#status")).toContainText(
     "MODEL_LICENSE_UNRESOLVED",

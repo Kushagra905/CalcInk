@@ -14,6 +14,7 @@ export interface ModelCandidate {
   readonly license: {
     readonly status: "missing" | "repository";
     readonly id: string | null;
+    readonly file?: string;
     readonly evidence: string;
     readonly note: string;
   };

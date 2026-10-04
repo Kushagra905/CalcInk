@@ -39,10 +39,13 @@ The pinned ink-on assets were prepared and all seven model/runtime files verifie
 A Chromium check initialized the actual local WASM worker, ran inference and returned an
 arithmetic outcome without external requests. Automated strokes verify engineering only;
 they are not genuine handwriting or accuracy evidence. TrOCR remains blocked by its
-unresolved weight license. No final model has been selected.
+unresolved weight license. On October 4, 2026, the user selected MathWriting TrOCR INT8
+as the final model (`trocr-mathwriting-int8`). This records the choice; it does not
+establish licensing, browser feasibility or handwriting accuracy.
 
 Phase 1 engineering is ready for collection/trial. Completion still requires genuine
-samples and the recorded model decision: development accuracy, warmed p95 latency,
+samples and measured TrOCR validation: development accuracy, warmed p95 latency,
 reference hardware, licensing and asset feasibility. Targets are at least 22/24 exact
 transcriptions and p95 at most two seconds. The 50 held-out captures remain reserved for
-Phase 6. Notebook recognition/result integration is Phase 3.
+Phase 6. Phase 3 notebook recognition/result integration is now implemented; the real
+TrOCR demonstration remains blocked by weight-license evidence and pending genuine samples.

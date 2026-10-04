@@ -248,6 +248,19 @@ h1 {
 .row-feedback.error {
   color: #a34332;
 }
+.row-feedback > span:last-child {
+  display: flex;
+  gap: 10px;
+  min-width: 0;
+  white-space: nowrap;
+}
+.row-state {
+  flex-shrink: 0;
+}
+.row-transcript {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .page-footer {
   font-size: 10px;
   color: #858c7d;

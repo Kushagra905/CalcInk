@@ -6,9 +6,9 @@ On-device handwritten math calculator for the Inter IIT Software Development Boo
 
 The foundation includes a React/TypeScript/Vite notebook, three aligned Canvas 2D layers,
 smooth pen capture, immutable document snapshots/edit events, global undo/redo, undoable clear,
-and shared recognition contracts. Real recognition and deterministic arithmetic are available
-in the model lab. Reactive notebook recognition/inline answers, erasers and offline caching
-remain pending.
+both erasers, reactive recognition scheduling and accepted inline answers. The notebook
+connects to the selected local TrOCR model; its unresolved weight-license evidence currently
+blocks preparation/loading. Offline caching and genuine TrOCR validation remain pending.
 
 Use Node.js 22.12+ (tested here with Node.js 24). Dependencies are pinned in `package-lock.json`.
 
@@ -19,7 +19,9 @@ npm run dev:mock
 
 Open the local URL printed by Vite. **Load sample fixture** sends synthetic ink through
 document events, the development coordinator, and an actual module worker, then displays
-the supplied `18+4×3=` transcript on row 1. It does not recognize handwriting or calculate an answer.
+the supplied `18+4×3=` transcript and calculated `30` on row 1. This is a fixed development
+fixture, not recognition of the ink you draw. The same coordinator/worker protocol handles
+debounce, result acceptance and arithmetic in the real path.
 
 For one-off contract tests, reset the fixtures, draw on a row, enter the writer and expected text/value,
 and export JSON. These files are labeled `contract` and stay out of handwriting evaluation.
@@ -52,7 +54,7 @@ Use consistent writer slots across devices; totals shown are for this browser, n
 The new plan uses `calcink-handwriting-v2`; the earlier database is left intact. Exported
 strokes use row-1 coordinates for the lab and retain their original row and capture metadata.
 
-Share **only the development export** with B for model selection. Recognition is disconnected
+Share **only the development export** with B for TrOCR validation. Recognition is disconnected
 during held-out capture; returning to development clears unsaved ink before reconnecting.
 Keep held-out exports separate until the final evaluation. See [Phase 1 status and handoff](docs/phase-1.md).
 
@@ -67,9 +69,24 @@ The real model-lab worker evaluates supported arithmetic with precedence, decima
 signs using decimal.js. Missing equals stays incomplete; malformed text is rejected; exact
 division by zero returns Undefined. See [Phase 2 implementation](docs/phase-2.md).
 
-`npm run dev` runs the notebook without a recognizer. The recognition entry point explicitly reports
-that no local model is connected. Mock code is selected only by the development server's `mock` mode;
+`npm run dev` connects the notebook to the selected local model. Model licensing, missing
+assets and initialization failures are shown while ink remains editable. Mock code is selected only by the development server's `mock` mode;
 production builds exclude it and reject `--mode mock`.
+
+## Phases 3 and 4
+
+Recognition waits for 350 ms after a completed edit. One inference runs at a time, with
+only the latest pending snapshot per row. Editing clears that row's answer immediately;
+old replies cannot restore it after drawing, erasing, cancellation, history or clear.
+Answers start 12 logical units after surviving ink at the row baseline. They shrink from
+32 to 16 logical units; when space is insufficient, status says **Leave room after =**.
+
+Choose **Stroke eraser** to remove whole visible strokes or **Pixel eraser** to remove a
+partial brush-width region. Eraser size is the brush diameter in logical page units.
+The pixel mask only affects earlier ink; drawing afterward stays visible. Eraser previews
+are provisional, cancellation restores committed ink, and each completed erase is one
+undoable gesture. At page capacity, stroke erasing, Clear and Undo remain available.
+See [Phase 3 integration](docs/phase-3.md) and [Phase 4 editing](docs/phase-4.md).
 
 ## Checks
 
@@ -98,8 +115,8 @@ Neither the mock tests nor the synthetic fixture establish model accuracy, laten
 
 ## Developer B — Phase 1 model lab
 
-Requires Node.js 22.12 or newer. The lab includes worker arithmetic; connecting the real model
-and displaying answers in the notebook remain Phase 3.
+Requires Node.js 22.12 or newer. The lab includes worker arithmetic and benchmarking;
+the notebook now uses the same client/protocol through its reactive coordinator.
 
 ```powershell
 npm ci
@@ -108,12 +125,16 @@ npm run assets:verify
 npm run dev:lab
 ```
 
-Open `http://127.0.0.1:5173/tools/model-lab/` to initialize the local comparison model, import
+Open `http://127.0.0.1:5173/tools/model-lab/` to initialize a local model, import
 the notebook's development captures, and export measured development reports. The lab uses
 port 5173, so stop an existing notebook server before starting `dev:lab`. The same lab URL is
 also available while `dev:mock` runs. Keep held-out exports separate until Phase 6.
 
-The TrOCR fine-tune remains blocked because its weight license is unresolved. ink-on is a comparison candidate; no final model or handwriting accuracy is claimed yet.
+**MathWriting TrOCR INT8 is the user-selected final model** (`trocr-mathwriting-int8`).
+The lab and asset commands default to this selection. Its preparation/loading remains
+blocked because its weight-license evidence is unresolved; its browser inference and
+genuine handwriting accuracy still require verification. ink-on remains available for
+comparison: select it explicitly in the lab and pass `ink-on-comer-int8` to both asset commands.
 
 Read [Phase 1 model evaluation](docs/phase-1-model-evaluation.md) for sample capture, benchmark targets, loading integration, asset provenance, and review commands.
 
@@ -123,9 +144,12 @@ npm run test:unit
 npm run build:lab
 ```
 
-After preparing assets, enable the optional real-model browser check in PowerShell:
+The optional real-model browser check exercises ink-on, not TrOCR. Prepare those
+comparison assets explicitly before enabling it in PowerShell:
 
 ```powershell
+npm run assets:prepare -- ink-on-comer-int8
+npm run assets:verify -- ink-on-comer-int8
 $env:CALCINK_MODEL_TEST = '1'
 npm run test:e2e -- --workers=4
 Remove-Item Env:\CALCINK_MODEL_TEST
@@ -137,6 +161,7 @@ handwriting or measured development accuracy.
 ## Shared integration status
 
 The readonly document types, shared sample plan/import format and quadratic replay now serve
-both implementations. The notebook callback API and trial worker transport remain separate;
-their reactive integration belongs to Phase 3. The store owns revisions/epoch, and history
-never rolls them back. Genuine Phase 1 trial evidence is still pending.
+both implementations. Notebook and lab share the nested worker protocol and TrialClient.
+The notebook's coordinator supplies reactive scheduling and accepted callbacks. The store
+owns revisions/epoch, and history never rolls them back. Genuine TrOCR trial evidence is
+still pending; selection alone does not demonstrate recognition accuracy.

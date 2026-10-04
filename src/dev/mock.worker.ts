@@ -1,82 +1,85 @@
-import type { WorkerReply, WorkerRequest } from "../recognition/contracts";
+/// <reference lib="webworker" />
+import { evaluateTranscript } from "../math/evaluate";
+import type {
+  MainToWorkerMessage,
+  WorkerToMainMessage,
+} from "../recognition/protocol";
+import { rasterizeRow } from "../recognition/rasterize";
 
+const scope = self as unknown as DedicatedWorkerGlobalScope;
 const MODEL_ID = "CALCINK_DEVELOPMENT_MOCK";
-let failedInit = false;
+const query = new URL(scope.location.href).searchParams;
+const behavior = query.get("behavior") ?? "normal";
 let failedRequest = false;
-type MockRequest = WorkerRequest & {
-  fixture?: { behavior: string; delayMs?: number; transcript?: string };
-};
+const send = (message: WorkerToMainMessage) => scope.postMessage(message);
 
-function reply(message: WorkerReply) {
-  self.postMessage(message);
-}
-
-self.onmessage = ({ data }: MessageEvent<MockRequest>) => {
+scope.onmessage = ({ data }: MessageEvent<MainToWorkerMessage>) => {
   if (data.type === "DISPOSE") {
-    self.close();
+    scope.close();
     return;
   }
   if (data.type === "INIT") {
-    if (data.fixture?.behavior === "init-error" && !failedInit) {
-      failedInit = true;
-      reply({
+    if (behavior === "init-error") {
+      send({
         type: "ERROR",
-        code: "MOCK_INIT_FAILED",
-        recoverable: true,
         modelId: MODEL_ID,
+        key: null,
+        code: "MOCK_INIT_FAILED",
+        message: "MOCK_INIT_FAILED",
+        recoverable: true,
       });
       return;
     }
-    const finish = () => {
-      reply({
+    const finish = () => send({ type: "READY", modelId: MODEL_ID });
+    if (behavior === "slow-init") {
+      send({
         type: "PROGRESS",
-        progress: 1,
-        message: "Development fixture loaded; no model download",
-      });
-      reply({ type: "READY", modelId: MODEL_ID });
-    };
-    if (data.fixture?.behavior === "slow-init") {
-      reply({
-        type: "PROGRESS",
-        progress: 0.25,
-        message: "Simulating slow initialization; no model download.",
+        modelId: MODEL_ID,
+        progress: {
+          stage: "initializing",
+          fraction: 0.25,
+          detail: "Simulating slow initialization; no model download.",
+        },
       });
       setTimeout(finish, 3000);
     } else finish();
     return;
   }
-  const request = {
-    epoch: data.epoch,
-    rowId: data.rowId,
-    rowRevision: data.rowRevision,
-    requestId: data.requestId,
-  };
+  const request = data.request;
+  if (behavior === "timeout" || behavior === "timeout-once") return;
   const delay =
-    data.fixture?.behavior === "out-of-order"
-      ? data.requestId % 2
+    behavior === "out-of-order"
+      ? request.requestId % 2
         ? 500
         : 20
-      : (data.fixture?.delayMs ?? 180);
+      : Number(query.get("delay") ?? 180);
   setTimeout(() => {
-    if (data.fixture?.behavior === "error" && !failedRequest) {
+    if (behavior === "error" && !failedRequest) {
       failedRequest = true;
-      reply({
+      send({
         type: "ERROR",
-        code: "MOCK_RECOGNITION_FAILED",
-        recoverable: true,
         modelId: MODEL_ID,
-        request,
+        key: request,
+        code: "MOCK_RECOGNITION_FAILED",
+        message: "MOCK_RECOGNITION_FAILED",
+        recoverable: true,
       });
       return;
     }
-    reply({
+    const bounds = rasterizeRow(
+      request.operations,
+      request.rowId,
+    ).visibleInkBounds;
+    const result = evaluateTranscript(
+      bounds ? (query.get("transcript") ?? "18+4×3=") : "",
+    );
+    send({
       type: "RESULT",
-      result: {
+      response: {
         ...request,
         modelId: MODEL_ID,
-        transcript: data.fixture?.transcript ?? "",
-        outcome: { kind: "incomplete" },
-        visibleInkBounds: null,
+        ...result,
+        visibleInkBounds: bounds,
         timing: { preprocessMs: 0, inferenceMs: 0, evaluateMs: 0 },
       },
     });

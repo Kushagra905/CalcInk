@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createFixture } from "../../src/dev/fixture";
 import {
   connectRecognition,
@@ -13,6 +13,14 @@ import type {
   WorkerReply,
   WorkerRequest,
 } from "../../src/recognition/contracts";
+import type { RecognitionRequest } from "../../src/recognition/protocol";
+
+beforeEach(() => vi.useFakeTimers());
+afterEach(() => {
+  vi.unstubAllGlobals();
+  vi.clearAllTimers();
+  vi.useRealTimers();
+});
 
 function stroke(rowId = "row-1"): InkOperation {
   const top = rowId === "row-2" ? 160 : 0;
@@ -50,13 +58,17 @@ function mockConnection() {
       worker as unknown as Worker,
       { data: reply } as MessageEvent<WorkerReply>,
     );
-  const ready = () => receive({ type: "READY", modelId: MOCK_MODEL_ID });
+  const ready = async () => {
+    receive({ type: "READY", modelId: MOCK_MODEL_ID });
+    await vi.advanceTimersByTimeAsync(0);
+  };
   const requests = () =>
     worker.postMessage.mock.calls
       .map(([request]) => request as WorkerRequest)
-      .filter((request) => request.type === "RECOGNIZE");
+      .filter((request) => request.type === "RECOGNIZE")
+      .map((request) => request.request);
   const response = (
-    request: Extract<WorkerRequest, { type: "RECOGNIZE" }>,
+    request: RecognitionRequest,
     transcript = "18+4×3=",
   ): RecognitionResponse => ({
     ...request,
@@ -174,65 +186,124 @@ describe("document and geometry contract", () => {
 });
 
 describe("mock coordinator integration", () => {
-  it("carries a committed fixture through the worker protocol to accepted callbacks", () => {
+  it("keeps a committed mask when the main-thread blankness shortcut cannot rasterize", async () => {
+    vi.stubGlobal(
+      "OffscreenCanvas",
+      class {
+        constructor() {
+          throw new Error("CANVAS_UNAVAILABLE");
+        }
+      },
+    );
     const mock = mockConnection();
-    mock.ready();
+    await mock.ready();
+    const ink = stroke();
+    mock.document.begin("row-1", "erase-pixel");
+    expect(() =>
+      mock.document.commit([
+        ink,
+        {
+          kind: "pixel-mask",
+          mask: {
+            id: "mask",
+            rowId: "row-1",
+            radius: 1,
+            points: [{ x: 20, y: 40, pressure: 0.5, t: 1 }],
+          },
+        },
+      ]),
+    ).not.toThrow();
+    expect(mock.document.getRow("row-1").operations).toHaveLength(2);
+    await vi.advanceTimersByTimeAsync(350);
+    const request = mock.requests()[0];
+    mock.receive({
+      type: "ERROR",
+      key: request,
+      modelId: MOCK_MODEL_ID,
+      code: "CANVAS_UNAVAILABLE",
+      message: "CANVAS_UNAVAILABLE",
+      recoverable: true,
+    });
+    await vi.advanceTimersByTimeAsync(0);
+    expect(mock.callbacks.onRowError).toHaveBeenCalledWith(
+      "row-1",
+      "CANVAS_UNAVAILABLE",
+    );
+    mock.connection.dispose();
+  });
+
+  it("debounces committed ink and carries it through the shared worker protocol", async () => {
+    const mock = mockConnection();
+    await mock.ready();
     mock.document.begin("row-1");
     mock.document.commit(createFixture());
+    await vi.advanceTimersByTimeAsync(349);
+    expect(mock.requests()).toHaveLength(0);
+    await vi.advanceTimersByTimeAsync(1);
     const request = mock.requests()[0];
     expect(request).toMatchObject({
-      type: "RECOGNIZE",
       epoch: 0,
       rowId: "row-1",
       rowRevision: 2,
       requestId: 1,
     });
-    mock.receive({ type: "RESULT", result: mock.response(request) });
+    mock.receive({ type: "RESULT", response: mock.response(request) });
+    await vi.advanceTimersByTimeAsync(0);
     expect(mock.callbacks.onResult).toHaveBeenCalledWith(
       expect.objectContaining({ transcript: "18+4×3=" }),
     );
     mock.connection.dispose();
   });
 
-  it("rejects stale results and errors during an edit, after replacement, and after clear", () => {
+  it("rejects stale results and errors during an edit, after replacement, and after clear", async () => {
     const mock = mockConnection();
-    mock.ready();
+    await mock.ready();
     mock.document.begin("row-1");
     mock.document.commit([stroke()]);
+    await vi.advanceTimersByTimeAsync(350);
     const old = mock.requests()[0];
     mock.document.begin("row-1");
-    mock.receive({ type: "RESULT", result: mock.response(old) });
+    mock.receive({ type: "RESULT", response: mock.response(old) });
     mock.receive({
       type: "ERROR",
       code: "OLD_ERROR",
       recoverable: true,
       modelId: MOCK_MODEL_ID,
-      request: old,
+      key: old,
+      message: "OLD_ERROR",
     });
+    await vi.advanceTimersByTimeAsync(0);
     expect(mock.callbacks.onResult).not.toHaveBeenCalled();
     expect(mock.callbacks.onRowError).not.toHaveBeenCalled();
     mock.document.cancel();
+    await vi.advanceTimersByTimeAsync(350);
     const current = mock.requests()[1];
     mock.receive({
       type: "RESULT",
-      result: { ...mock.response(current), modelId: "another-model" },
+      response: { ...mock.response(current), modelId: "another-model" },
     });
     expect(mock.callbacks.onResult).not.toHaveBeenCalled();
-    mock.receive({ type: "RESULT", result: mock.response(current, "CURRENT") });
-    mock.receive({ type: "RESULT", result: mock.response(old, "OBSOLETE") });
+    mock.receive({
+      type: "RESULT",
+      response: mock.response(current, "CURRENT"),
+    });
+    mock.receive({ type: "RESULT", response: mock.response(old, "OBSOLETE") });
+    await vi.advanceTimersByTimeAsync(0);
     expect(mock.callbacks.onResult).toHaveBeenCalledTimes(1);
     mock.document.clear();
-    mock.receive({ type: "RESULT", result: mock.response(current) });
+    mock.receive({ type: "RESULT", response: mock.response(current) });
+    await vi.advanceTimersByTimeAsync(0);
     expect(mock.callbacks.onResult).toHaveBeenCalledTimes(1);
     mock.connection.dispose();
   });
 
-  it("waits for an active gesture when readiness arrives and cleans up on dispose", () => {
+  it("waits for an active gesture when readiness arrives and cleans up on dispose", async () => {
     const mock = mockConnection();
     mock.document.begin("row-1");
-    mock.ready();
+    await mock.ready();
     expect(mock.requests()).toHaveLength(0);
     mock.document.commit([stroke()]);
+    await vi.advanceTimersByTimeAsync(350);
     expect(mock.requests()).toHaveLength(1);
     mock.connection.dispose();
     expect(mock.worker.terminate).toHaveBeenCalledTimes(1);
@@ -243,5 +314,85 @@ describe("mock coordinator integration", () => {
     expect(mock.worker.postMessage.mock.calls).toHaveLength(callCount);
     mock.connection.dispose();
     expect(mock.worker.terminate).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps one active job and only the latest pending revision per row", async () => {
+    const mock = mockConnection();
+    await mock.ready();
+    mock.document.begin("row-1");
+    mock.document.commit([stroke()]);
+    await vi.advanceTimersByTimeAsync(350);
+    const first = mock.requests()[0];
+    for (let i = 0; i < 100; i++) {
+      mock.document.begin("row-2");
+      mock.document.commit([stroke("row-2")]);
+    }
+    mock.document.begin("row-1");
+    mock.document.cancel();
+    mock.document.begin("row-2");
+    mock.document.cancel();
+    await vi.advanceTimersByTimeAsync(350);
+    expect(mock.requests()).toHaveLength(1);
+    mock.receive({ type: "RESULT", response: mock.response(first) });
+    await vi.advanceTimersByTimeAsync(0);
+    expect(mock.callbacks.onResult).not.toHaveBeenCalled();
+    const second = mock.requests()[1];
+    expect(second.rowId).toBe("row-2");
+    expect(second.rowRevision).toBe(mock.document.getRow("row-2").rowRevision);
+    mock.receive({ type: "RESULT", response: mock.response(second) });
+    await vi.advanceTimersByTimeAsync(0);
+    const third = mock.requests()[2];
+    expect(third.rowId).toBe("row-1");
+    mock.receive({ type: "RESULT", response: mock.response(third) });
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(mock.requests()).toHaveLength(3);
+    mock.connection.dispose();
+  });
+
+  it("rejects pre-clear replies and recognizes undo with a fresh epoch", async () => {
+    const mock = mockConnection();
+    await mock.ready();
+    mock.document.begin("row-1");
+    mock.document.commit([stroke()]);
+    await vi.advanceTimersByTimeAsync(350);
+    const old = mock.requests()[0];
+    mock.document.clear();
+    mock.document.undo();
+    await vi.advanceTimersByTimeAsync(350);
+    mock.receive({ type: "RESULT", response: mock.response(old) });
+    await vi.advanceTimersByTimeAsync(0);
+    expect(mock.callbacks.onResult).not.toHaveBeenCalled();
+    const restored = mock.requests()[1];
+    expect(restored.epoch).toBeGreaterThan(old.epoch);
+    expect(restored.rowRevision).toBeGreaterThan(old.rowRevision);
+    mock.receive({ type: "RESULT", response: mock.response(restored) });
+    await vi.advanceTimersByTimeAsync(0);
+    expect(mock.callbacks.onResult).toHaveBeenCalledTimes(1);
+    mock.connection.dispose();
+  });
+
+  it("restarts once after ten seconds and leaves repeated timeout retryable", async () => {
+    const mock = mockConnection();
+    await mock.ready();
+    mock.document.begin("row-1");
+    mock.document.commit([stroke()]);
+    await vi.advanceTimersByTimeAsync(350 + 10000);
+    expect(mock.worker.terminate).toHaveBeenCalledTimes(1);
+    await mock.ready();
+    await vi.advanceTimersByTimeAsync(350 + 10000);
+    expect(mock.worker.terminate).toHaveBeenCalledTimes(2);
+    expect(
+      mock.worker.postMessage.mock.calls.filter(
+        ([message]) => message.type === "INIT",
+      ),
+    ).toHaveLength(2);
+    expect(mock.callbacks.onModelState).toHaveBeenLastCalledWith(
+      expect.objectContaining({ kind: "error", code: "INFERENCE_TIMEOUT" }),
+    );
+    mock.connection.retry();
+    await mock.ready();
+    await vi.advanceTimersByTimeAsync(350);
+    expect(mock.requests()).toHaveLength(3);
+    mock.connection.dispose();
   });
 });

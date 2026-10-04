@@ -5,7 +5,7 @@ test("real local WASM worker initializes, infers and evaluates without remote re
 }) => {
   test.skip(
     process.env.CALCINK_MODEL_TEST !== "1",
-    "Run after assets:prepare with CALCINK_MODEL_TEST=1",
+    "Run after assets:prepare -- ink-on-comer-int8 with CALCINK_MODEL_TEST=1",
   );
   test.setTimeout(90000);
   const remote: string[] = [];
@@ -17,6 +17,13 @@ test("real local WASM worker initializes, infers and evaluates without remote re
       remote.push(request.url());
   });
   await page.goto("/tools/model-lab/");
+  await expect(page.locator("#model")).toHaveValue("trocr-mathwriting-int8");
+  await page.locator("#load").click();
+  await expect(page.locator("#status")).toContainText(
+    "MODEL_LICENSE_UNRESOLVED",
+  );
+  await expect.poll(() => page.workers().length).toBe(0);
+  await page.locator("#model").selectOption("ink-on-comer-int8");
   await page.locator("#load").click();
   await expect(page.locator("#status")).toContainText("Local model ready", {
     timeout: 60000,

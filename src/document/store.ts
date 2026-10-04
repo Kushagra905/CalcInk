@@ -132,6 +132,22 @@ export function createDocumentStore() {
     getEpoch: () => epoch,
     getRow,
     getRows: () => Object.freeze(ROWS.map((row) => getRow(row.id))),
+    getCapacityState: () => {
+      const operations = ROWS.flatMap((row) => getRow(row.id).operations);
+      const points = operations.reduce(
+        (count, operation) =>
+          count +
+          (operation.kind === "stroke"
+            ? operation.stroke.points.length
+            : operation.mask.points.length),
+        0,
+      );
+      return {
+        operations: operations.length,
+        points,
+        full: operations.length >= 1000 || points >= 200000,
+      };
+    },
     getHistoryState: () => ({
       canUndo: past.length > 0,
       canRedo: future.length > 0,

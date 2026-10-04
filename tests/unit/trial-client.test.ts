@@ -111,36 +111,56 @@ describe("trial client", () => {
     expect(fetch).not.toHaveBeenCalled();
     client.unload();
   });
-  it("requires every result identity field to match", async () => {
-    const client = new TrialClient(() => {});
-    const worker = await ready(client);
-    const pending = client.recognize({
-      epoch: 1,
-      rowId: "row-1",
-      rowRevision: 2,
-      operations: [],
-    });
-    const request = worker.messages.find((item) => item.type === "RECOGNIZE")!;
-    if (request.type !== "RECOGNIZE") throw new Error("Missing request");
-    const response = {
-      ...request.request,
-      modelId: candidate.modelId,
-      transcript: "1=",
-      outcome: { kind: "incomplete" as const },
-      visibleInkBounds: null,
-      timing: { preprocessMs: 0, inferenceMs: 1, evaluateMs: 0 },
-    };
-    let accepted = false;
-    void pending.then(() => {
-      accepted = true;
-    });
-    worker.emit({ type: "RESULT", response: { ...response, rowRevision: 0 } });
-    await Promise.resolve();
-    expect(accepted).toBe(false);
-    worker.emit({ type: "RESULT", response });
-    await expect(pending).resolves.toMatchObject({ rowRevision: 2 });
-    client.unload();
-  });
+  it.each([
+    { epoch: 0 },
+    { rowId: "row-2" },
+    { rowRevision: 0 },
+    { requestId: 999 },
+    { modelId: "foreign" },
+  ])(
+    "ignores results and request errors with mismatched identity %j",
+    async (foreign) => {
+      const client = new TrialClient(() => {});
+      const worker = await ready(client);
+      const pending = client.recognize({
+        epoch: 1,
+        rowId: "row-1",
+        rowRevision: 2,
+        operations: [],
+      });
+      const request = worker.messages.find(
+        (item) => item.type === "RECOGNIZE",
+      )!;
+      if (request.type !== "RECOGNIZE") throw new Error("Missing request");
+      const response = {
+        ...request.request,
+        modelId: candidate.modelId,
+        transcript: "1=",
+        outcome: { kind: "incomplete" as const },
+        visibleInkBounds: null,
+        timing: { preprocessMs: 0, inferenceMs: 1, evaluateMs: 0 },
+      };
+      let accepted = false;
+      void pending.then(() => {
+        accepted = true;
+      });
+      const wrong = { ...response, ...foreign };
+      worker.emit({ type: "RESULT", response: wrong });
+      worker.emit({
+        type: "ERROR",
+        key: wrong,
+        modelId: wrong.modelId,
+        code: "FOREIGN",
+        message: "FOREIGN",
+        recoverable: true,
+      });
+      await Promise.resolve();
+      expect(accepted).toBe(false);
+      worker.emit({ type: "RESULT", response });
+      await expect(pending).resolves.toMatchObject({ rowRevision: 2 });
+      client.unload();
+    },
+  );
   it("rejects in-flight work when unloaded", async () => {
     const client = new TrialClient(() => {});
     const worker = await ready(client);
@@ -178,5 +198,71 @@ describe("trial client", () => {
     await assertion;
     expect(FakeWorker.current).toBeNull();
     expect(states.at(-1)).toEqual({ kind: "idle" });
+  });
+
+  it("aborts the manifest request on unload without replacing idle with an error", async () => {
+    let signal: AbortSignal | null = null;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((_url: string, options: RequestInit) => {
+        const current = options.signal;
+        if (!current) throw new Error("Missing cancellation signal");
+        signal = current;
+        return new Promise<Response>((_resolve, reject) => {
+          current.addEventListener("abort", () => reject(current.reason), {
+            once: true,
+          });
+        });
+      }),
+    );
+    const states: LoadingState[] = [];
+    const client = new TrialClient((state) => states.push(state));
+    const loading = expect(
+      client.load(candidate, "https://example.test/"),
+    ).rejects.toThrow("MODEL_UNLOADED");
+    client.unload();
+    await loading;
+    expect(signal).toMatchObject({ aborted: true });
+    expect(states.at(-1)).toEqual({ kind: "idle" });
+  });
+
+  it("cancels an old download without interrupting the replacement load", async () => {
+    const signals: AbortSignal[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((_url: string, options: RequestInit) => {
+        const signal = options.signal;
+        if (!signal) throw new Error("Missing cancellation signal");
+        signals.push(signal);
+        if (signals.length === 2)
+          return Promise.resolve(new Response(JSON.stringify(manifest)));
+        return new Promise<Response>((_resolve, reject) => {
+          signal.addEventListener("abort", () => reject(signal.reason), {
+            once: true,
+          });
+        });
+      }),
+    );
+    vi.stubGlobal("Worker", FakeWorker);
+    const states: LoadingState[] = [];
+    const client = new TrialClient((state) => states.push(state));
+    const obsolete = expect(
+      client.load(candidate, "https://example.test/"),
+    ).rejects.toThrow("MODEL_UNLOADED");
+    const replacement = client.load(candidate, "https://example.test/");
+    await obsolete;
+    await vi.waitFor(() => expect(FakeWorker.current).not.toBeNull());
+    const worker = FakeWorker.current;
+    if (!worker) throw new Error("Missing replacement worker");
+    worker.emit({ type: "READY", modelId: candidate.modelId });
+    await replacement;
+    expect(signals[0].aborted).toBe(true);
+    expect(signals[1].aborted).toBe(false);
+    expect(states.at(-1)).toEqual({
+      kind: "ready",
+      modelId: candidate.modelId,
+    });
+    expect(worker.terminate).not.toHaveBeenCalled();
+    client.unload();
   });
 });

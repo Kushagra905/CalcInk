@@ -22,6 +22,7 @@ export class TrialClient {
   private state: LoadingState = { kind: "idle" };
   private sequence = 0;
   private generation = 0;
+  private manifestAbort: AbortController | null = null;
   private init: {
     resolve: () => void;
     reject: (error: Error) => void;
@@ -61,14 +62,25 @@ export class TrialClient {
       assertTrialAllowed(candidate);
       let manifest = suppliedManifest;
       if (!manifest) {
-        const response = await fetch(
-          assetUrl(baseUrl, `models/${candidate.modelId}/manifest.json`),
-          { signal: AbortSignal.timeout(90_000) },
-        );
-        if (generation !== this.generation) throw new Error("MODEL_UNLOADED");
-        if (!response.ok)
-          throw new Error("ASSETS_NOT_PREPARED: run npm run assets:prepare");
-        manifest = (await response.json()) as ModelManifest;
+        const controller = new AbortController();
+        this.manifestAbort = controller;
+        try {
+          const response = await fetch(
+            assetUrl(baseUrl, `models/${candidate.modelId}/manifest.json`),
+            {
+              signal: AbortSignal.any([
+                controller.signal,
+                AbortSignal.timeout(90_000),
+              ]),
+            },
+          );
+          if (generation !== this.generation) throw new Error("MODEL_UNLOADED");
+          if (!response.ok)
+            throw new Error("ASSETS_NOT_PREPARED: run npm run assets:prepare");
+          manifest = (await response.json()) as ModelManifest;
+        } finally {
+          if (this.manifestAbort === controller) this.manifestAbort = null;
+        }
       }
       if (generation !== this.generation) throw new Error("MODEL_UNLOADED");
       if (
@@ -146,6 +158,8 @@ export class TrialClient {
 
   unload(): void {
     this.generation++;
+    this.manifestAbort?.abort(new Error("MODEL_UNLOADED"));
+    this.manifestAbort = null;
     this.terminateWorker();
     this.rejectPending(new Error("MODEL_UNLOADED"));
     this.setState({ kind: "idle" });

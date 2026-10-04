@@ -52,7 +52,17 @@ export function connectRecognition(
         "delay",
         String(options.delayMs ?? query.get("delay") ?? 180),
       );
-      url.searchParams.set("transcript", query.get("transcript") ?? "18+4×3=");
+      // Keep backslashes/slashes out of the module query: Windows path
+      // normalization in the dev server can otherwise break relative imports.
+      const bytes = new TextEncoder().encode(
+        query.get("transcript") ?? "18+4×3=",
+      );
+      url.searchParams.set(
+        "transcript64",
+        btoa(Array.from(bytes, (byte) => String.fromCharCode(byte)).join(""))
+          .replaceAll("+", "-")
+          .replaceAll("/", "_"),
+      );
       return new Worker(url, { type: "module" });
     },
   });

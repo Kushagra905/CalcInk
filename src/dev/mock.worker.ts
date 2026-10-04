@@ -10,6 +10,15 @@ const scope = self as unknown as DedicatedWorkerGlobalScope;
 const MODEL_ID = "CALCINK_DEVELOPMENT_MOCK";
 const query = new URL(scope.location.href).searchParams;
 const behavior = query.get("behavior") ?? "normal";
+const encodedTranscript = query.get("transcript64");
+const fixtureTranscript = encodedTranscript
+  ? new TextDecoder().decode(
+      Uint8Array.from(
+        atob(encodedTranscript.replaceAll("-", "+").replaceAll("_", "/")),
+        (character) => character.charCodeAt(0),
+      ),
+    )
+  : (query.get("transcript") ?? "18+4×3=");
 let failedRequest = false;
 const send = (message: WorkerToMainMessage) => scope.postMessage(message);
 
@@ -70,7 +79,7 @@ scope.onmessage = ({ data }: MessageEvent<MainToWorkerMessage>) => {
       request.operations,
       request.rowId,
     ).visibleInkBounds;
-    const transcript = bounds ? (query.get("transcript") ?? "18+4×3=") : "";
+    const transcript = bounds ? fixtureTranscript : "";
     const result = evaluateTranscript(transcript);
     send({
       type: "RESULT",

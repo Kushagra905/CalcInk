@@ -186,12 +186,78 @@ describe("document and geometry contract", () => {
 });
 
 describe("mock coordinator integration", () => {
-  it("keeps a committed mask when the main-thread blankness shortcut cannot rasterize", async () => {
+  it("dispatches a ready row while a newer row is still debouncing", async () => {
+    const mock = mockConnection();
+    await mock.ready();
+    mock.document.begin("row-1");
+    mock.document.commit([stroke()]);
+    await vi.advanceTimersByTimeAsync(200);
+    mock.document.begin("row-2");
+    mock.document.commit([stroke("row-2")]);
+    await vi.advanceTimersByTimeAsync(150);
+    const first = mock.requests()[0];
+    expect(first.rowId).toBe("row-1");
+    mock.receive({ type: "RESULT", response: mock.response(first) });
+    await vi.advanceTimersByTimeAsync(199);
+    expect(mock.requests()).toHaveLength(1);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(mock.requests()[1].rowId).toBe("row-2");
+    mock.connection.dispose();
+  });
+
+  it("drops an in-flight result after whole-stroke removal and dispatches no empty row", async () => {
+    const mock = mockConnection();
+    await mock.ready();
+    mock.document.begin("row-1");
+    mock.document.commit([stroke()]);
+    await vi.advanceTimersByTimeAsync(350);
+    const old = mock.requests()[0];
+    mock.document.begin("row-1", "erase-stroke");
+    mock.document.commit([]);
+    mock.receive({ type: "RESULT", response: mock.response(old) });
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(mock.requests()).toHaveLength(1);
+    expect(mock.callbacks.onResult).not.toHaveBeenCalled();
+    expect(mock.callbacks.onClear).toHaveBeenLastCalledWith("row-1");
+    mock.connection.dispose();
+  });
+
+  it("rejects replies from a terminated worker after retry and keeps request IDs increasing", async () => {
+    const mock = mockConnection();
+    await mock.ready();
+    mock.document.begin("row-1");
+    mock.document.commit([stroke()]);
+    await vi.advanceTimersByTimeAsync(350);
+    const old = mock.requests()[0];
+    const obsoleteHandler = mock.worker.onmessage;
+    mock.connection.retry();
+    await mock.ready();
+    await vi.advanceTimersByTimeAsync(350);
+    const current = mock.requests()[1];
+    expect(current.requestId).toBeGreaterThan(old.requestId);
+    obsoleteHandler?.call(
+      mock.worker as unknown as Worker,
+      {
+        data: { type: "RESULT", response: mock.response(old) },
+      } as MessageEvent<WorkerReply>,
+    );
+    await vi.advanceTimersByTimeAsync(0);
+    expect(mock.callbacks.onResult).not.toHaveBeenCalled();
+    mock.receive({ type: "RESULT", response: mock.response(current) });
+    await vi.advanceTimersByTimeAsync(0);
+    expect(mock.callbacks.onResult).toHaveBeenCalledTimes(1);
+    mock.connection.dispose();
+  });
+
+  it("queues masked ink without constructing a recognition canvas on the main thread", async () => {
+    const rasterize = vi.fn(() => {
+      throw new Error("CANVAS_UNAVAILABLE");
+    });
     vi.stubGlobal(
       "OffscreenCanvas",
       class {
         constructor() {
-          throw new Error("CANVAS_UNAVAILABLE");
+          rasterize();
         }
       },
     );
@@ -215,6 +281,7 @@ describe("mock coordinator integration", () => {
     ).not.toThrow();
     expect(mock.document.getRow("row-1").operations).toHaveLength(2);
     await vi.advanceTimersByTimeAsync(350);
+    expect(rasterize).not.toHaveBeenCalled();
     const request = mock.requests()[0];
     mock.receive({
       type: "ERROR",

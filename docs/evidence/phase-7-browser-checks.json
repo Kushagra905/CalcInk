@@ -1,0 +1,250 @@
+{
+  "schemaVersion": 1,
+  "recordedAt": "2026-10-05T18:59:59.472Z",
+  "dateInAsiaCalcutta": "2026-10-06",
+  "sourceCommit": "15c25c4f69fb69abc1d0c1cb95b3b7b272fb79e9",
+  "productionVersion": "65c8f66148592467556514b6",
+  "environment": {
+    "node": "v24.16.0",
+    "os": "win32 10.0.26200",
+    "cpu": "12th Gen Intel(R) Core(TM) i5-12450H"
+  },
+  "headless": true,
+  "e2e": {
+    "expected": 26,
+    "passed": 26,
+    "failed": 0,
+    "elapsedMs": 49200,
+    "modelEnabled": true,
+    "workers": 2,
+    "externalPreview": true,
+    "source": "Playwright console result: 26 passed (49.2s)"
+  },
+  "runs": [
+    {
+      "id": "offline-chromium",
+      "stats": {
+        "startTime": "2026-10-05T18:54:57.440Z",
+        "duration": 29035.181,
+        "expected": 5,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "errors": [],
+      "tests": [
+        "production caches real ink-on under a base path and infers after offline reload",
+        "verified caches cannot claim readiness when real model initialization fails",
+        "missing and corrupted cached weights prevent readiness and recover without losing ink",
+        "quota failure is visible and retry preserves committed ink",
+        "updates preserve ink, require other tabs to close and retire old caches after activation"
+      ]
+    },
+    {
+      "id": "evaluation-chromium",
+      "stats": {
+        "startTime": "2026-10-05T18:54:57.778Z",
+        "duration": 43187.982,
+        "expected": 1,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "errors": [],
+      "tests": [
+        "reject incomplete fixtures, run real WASM through the final coordinator and verify exported failures"
+      ]
+    },
+    {
+      "id": "offline-edge",
+      "stats": {
+        "startTime": "2026-10-05T18:57:13.974Z",
+        "duration": 30744.168999999998,
+        "expected": 5,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "errors": [],
+      "tests": [
+        "production caches real ink-on under a base path and infers after offline reload",
+        "verified caches cannot claim readiness when real model initialization fails",
+        "missing and corrupted cached weights prevent readiness and recover without losing ink",
+        "quota failure is visible and retry preserves committed ink",
+        "updates preserve ink, require other tabs to close and retire old caches after activation"
+      ]
+    },
+    {
+      "id": "public-chromium",
+      "stats": {
+        "startTime": "2026-10-05T18:56:10.109Z",
+        "duration": 28502.296000000002,
+        "expected": 1,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "errors": [],
+      "tests": [
+        "published build performs input-dependent real WASM inference after disconnected reload"
+      ]
+    },
+    {
+      "id": "public-edge",
+      "stats": {
+        "startTime": "2026-10-05T18:57:56.557Z",
+        "duration": 17392.73,
+        "expected": 1,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "errors": [],
+      "tests": [
+        "published build performs input-dependent real WASM inference after disconnected reload"
+      ]
+    }
+  ],
+  "httpVerification": {
+    "passed": true,
+    "url": "https://kushagra905.github.io/CalcInk/",
+    "version": "65c8f66148592467556514b6",
+    "verifiedAssets": 21,
+    "verifiedBytes": 42004089
+  },
+  "scope": "Automated engineering checks. Emulated pointers are not physical input. Offline real inference with synthetic inputs is not genuine handwriting accuracy or a correct-arithmetic demonstration. Synthetic final evaluator data does not count toward the 50-sample target.",
+  "publicSyntheticObservations": [
+    {
+      "channel": "chromium",
+      "recordedAt": "2026-10-05T18:56:38.447Z",
+      "url": "https://kushagra905.github.io/CalcInk/",
+      "buildVersion": "65c8f66148592467556514b6",
+      "environment": {
+        "cpu": "12th Gen Intel(R) Core(TM) i5-12450H",
+        "os": "win32 10.0.26200",
+        "browser": "153.0.8010.12",
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.8010.12 Safari/537.36",
+        "headless": true
+      },
+      "cachePreparedOnline": true,
+      "disconnectedReload": true,
+      "activeWorkers": 1,
+      "first": {
+        "epoch": 0,
+        "rowId": "row-1",
+        "rowRevision": 6,
+        "requestId": 1,
+        "modelId": "ink-on-comer-int8",
+        "transcript": "1 = =",
+        "outcome": {
+          "kind": "invalid",
+          "code": "MULTIPLE_EQUALS"
+        },
+        "visibleInkBounds": {
+          "x": 118,
+          "y": 50,
+          "width": 106,
+          "height": 62
+        },
+        "timing": {
+          "preprocessMs": 8.099999997764826,
+          "inferenceMs": 611.5,
+          "evaluateMs": 0.4000000022351742
+        },
+        "normalizedTranscript": null
+      },
+      "second": {
+        "epoch": 1,
+        "rowId": "row-1",
+        "rowRevision": 15,
+        "requestId": 2,
+        "modelId": "ink-on-comer-int8",
+        "transcript": "4 = =",
+        "outcome": {
+          "kind": "invalid",
+          "code": "MULTIPLE_EQUALS"
+        },
+        "visibleInkBounds": {
+          "x": 117,
+          "y": 40,
+          "width": 107,
+          "height": 72
+        },
+        "timing": {
+          "preprocessMs": 6.600000001490116,
+          "inferenceMs": 393.8999999985099,
+          "evaluateMs": 0
+        },
+        "normalizedTranscript": null
+      },
+      "errors": [],
+      "scope": "Synthetic engineering inputs on the public production build. Real local inference works after offline reload and changes with ink. No handwriting accuracy or correct-arithmetic claim."
+    },
+    {
+      "channel": "edge",
+      "recordedAt": "2026-10-05T18:58:13.436Z",
+      "url": "https://kushagra905.github.io/CalcInk/",
+      "buildVersion": "65c8f66148592467556514b6",
+      "environment": {
+        "cpu": "12th Gen Intel(R) Core(TM) i5-12450H",
+        "os": "win32 10.0.26200",
+        "browser": "154.0.4258.53",
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/154.0.0.0 Safari/537.36 Edg/154.0.0.0",
+        "headless": true
+      },
+      "cachePreparedOnline": true,
+      "disconnectedReload": true,
+      "activeWorkers": 1,
+      "first": {
+        "epoch": 0,
+        "rowId": "row-1",
+        "rowRevision": 6,
+        "requestId": 1,
+        "modelId": "ink-on-comer-int8",
+        "transcript": "1 = =",
+        "outcome": {
+          "kind": "invalid",
+          "code": "MULTIPLE_EQUALS"
+        },
+        "visibleInkBounds": {
+          "x": 118,
+          "y": 50,
+          "width": 106,
+          "height": 62
+        },
+        "timing": {
+          "preprocessMs": 21.900000002235174,
+          "inferenceMs": 647.3999999985099,
+          "evaluateMs": 0.4000000022351742
+        },
+        "normalizedTranscript": null
+      },
+      "second": {
+        "epoch": 1,
+        "rowId": "row-1",
+        "rowRevision": 15,
+        "requestId": 2,
+        "modelId": "ink-on-comer-int8",
+        "transcript": "4 = =",
+        "outcome": {
+          "kind": "invalid",
+          "code": "MULTIPLE_EQUALS"
+        },
+        "visibleInkBounds": {
+          "x": 117,
+          "y": 40,
+          "width": 107,
+          "height": 72
+        },
+        "timing": {
+          "preprocessMs": 6.300000000745058,
+          "inferenceMs": 415.80000000074506,
+          "evaluateMs": 0.09999999776482582
+        },
+        "normalizedTranscript": null
+      },
+      "errors": [],
+      "scope": "Synthetic engineering inputs on the public production build. Real local inference works after offline reload and changes with ink. No handwriting accuracy or correct-arithmetic claim."
+    }
+  ]
+}

@@ -1,0 +1,111 @@
+{
+  "schemaVersion": 1,
+  "scope": "Read-only GitHub integration/delivery review and independent HTTP/hash verification; not genuine handwriting acceptance.",
+  "githubCheckedAt": "2026-10-04T19:46:29.329Z",
+  "repository": "Kushagra905/CalcInk",
+  "main": {
+    "sha": "16efb8a817a3046638454d180d4b9f08556fe6cc",
+    "url": "https://github.com/Kushagra905/CalcInk/commit/16efb8a817a3046638454d180d4b9f08556fe6cc"
+  },
+  "recognitionBranch": {
+    "sha": "0ce4c2e8e32e48cf7213c8f34c66807b3771b4e1",
+    "url": "https://github.com/Kushagra905/CalcInk/commit/0ce4c2e8e32e48cf7213c8f34c66807b3771b4e1"
+  },
+  "integration": [
+    {
+      "number": 11,
+      "title": "test(recognition): add final evaluation and phase 6 runtime evidence",
+      "state": "closed",
+      "mergedAt": "2026-10-04T19:38:20Z",
+      "mergeCommit": "16efb8a817a3046638454d180d4b9f08556fe6cc",
+      "head": "0ce4c2e8e32e48cf7213c8f34c66807b3771b4e1",
+      "base": "main",
+      "url": "https://github.com/Kushagra905/CalcInk/pull/11"
+    },
+    {
+      "number": 10,
+      "title": "fix: improve input accessibility and add phase 6 release checks",
+      "state": "closed",
+      "mergedAt": "2026-10-04T17:59:22Z",
+      "mergeCommit": "515301dd4cb377d729f30a314d23fb0d2126c577",
+      "head": "4fa0cf324c56552c794642125ab687614e23c932",
+      "base": "main",
+      "url": "https://github.com/Kushagra905/CalcInk/pull/10"
+    }
+  ],
+  "mainWorkflow": {
+    "id": 37229041440,
+    "name": "CalcInk Pages",
+    "head": "16efb8a817a3046638454d180d4b9f08556fe6cc",
+    "branch": "main",
+    "event": "push",
+    "status": "completed",
+    "conclusion": "success",
+    "url": "https://github.com/Kushagra905/CalcInk/actions/runs/37229041440",
+    "updatedAt": "2026-10-04T19:45:59Z"
+  },
+  "candidateChecks": [
+    {
+      "sha": "16efb8a817a3046638454d180d4b9f08556fe6cc",
+      "total": 3,
+      "checks": [
+        {
+          "name": "verify-public",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/Kushagra905/CalcInk/actions/runs/37229041440/job/111515860206"
+        },
+        {
+          "name": "deploy",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/Kushagra905/CalcInk/actions/runs/37229041440/job/111515821626"
+        },
+        {
+          "name": "build / foundation",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/Kushagra905/CalcInk/actions/runs/37229041440/job/111514615319"
+        }
+      ]
+    },
+    {
+      "sha": "0ce4c2e8e32e48cf7213c8f34c66807b3771b4e1",
+      "total": 2,
+      "checks": [
+        {
+          "name": "foundation",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/Kushagra905/CalcInk/actions/runs/37229032660/job/111514589172"
+        },
+        {
+          "name": "foundation",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/Kushagra905/CalcInk/actions/runs/37228984642/job/111514449967"
+        }
+      ]
+    }
+  ],
+  "public": {
+    "url": "https://kushagra905.github.io/CalcInk/",
+    "manifestHttpStatus": 200,
+    "version": "65c8f66148592467556514b6",
+    "independentHashVerification": {
+      "command": "npm run verify:deployed",
+      "result": "passed",
+      "version": "65c8f66148592467556514b6",
+      "verifiedAssets": 21,
+      "verifiedBytes": 42004089,
+      "limitation": "HTTP/hash checks do not establish genuine handwriting or physical-device acceptance."
+    }
+  },
+  "manualEvidence": {
+    "userReportsChecksPerformed": true,
+    "reportPathsSupplied": false,
+    "scoresAndLatencySupplied": false,
+    "physicalDeviceResultsSupplied": false,
+    "finalAcceptance": "hold-pending-evidence-review-and-phase-7"
+  }
+}

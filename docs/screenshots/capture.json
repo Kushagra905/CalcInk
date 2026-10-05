@@ -1,0 +1,29 @@
+{
+  "recordedAt": "2026-10-05T18:54:09.897Z",
+  "browser": "153.0.8010.12",
+  "headless": true,
+  "production": true,
+  "base": "/CalcInk/",
+  "emptyNotebook": true,
+  "scope": "Real product UI only. Narrow viewport emulation is not physical mobile testing; no recognition accuracy or genuine handwriting result.",
+  "screenshots": [
+    {
+      "file": "desktop.png",
+      "width": 1280,
+      "height": 1100,
+      "dpr": 2,
+      "version": "65c8f66148592467556514b6",
+      "noHorizontalOverflow": true,
+      "errors": []
+    },
+    {
+      "file": "mobile.png",
+      "width": 390,
+      "height": 960,
+      "dpr": 2,
+      "version": "65c8f66148592467556514b6",
+      "noHorizontalOverflow": true,
+      "errors": []
+    }
+  ]
+}

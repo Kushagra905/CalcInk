@@ -2,6 +2,50 @@
 
 On-device handwritten math calculator for the Inter IIT Software Development Bootcamp.
 
+**Live app:** [CalcInk](https://kushagra905.github.io/CalcInk/).
+**Release status:** implementation and automated engineering checks are integrated;
+genuine handwriting and physical-device acceptance have no retained results available.
+See the [single release checklist](docs/release-checklist.md) for A, B and joint work.
+
+## Using the notebook
+
+1. Wait for **Model ready**. Write one horizontal expression per row, finish with
+   `=` and leave space for the answer. Required symbols are `0-9`, `+`, `−`, `×`,
+   `÷`, `.`, and `=`. Parser support for parentheses is not a measured handwriting claim.
+2. **Pen** draws; Width affects future gestures. **Stroke eraser** removes a whole
+   visible stroke; **Pixel eraser** removes only the swept region. Eraser size is its diameter.
+3. **Undo**, **Redo** and **Clear** work across rows; Clear can be undone. Keyboard:
+   Ctrl/Cmd+Z, Ctrl/Cmd+Shift+Z, or Ctrl+Y outside text fields.
+4. Editing clears the old answer immediately. A completed edit schedules recognition
+   after 350 ms. Incomplete/invalid/unreadable input shows feedback; division by zero
+   gives `Undefined`. Leave room after equals if the answer cannot fit.
+5. Prepare online until **Ready offline**, then disconnect. Reload clears unsaved
+   tab ink/history; offline reload starts a fresh notebook using cached assets.
+   Failed preparation/recognition offers retry while preserving current ink.
+
+Desktop Chromium and Edge have automated checks. Physical mouse/touch/stylus and
+other browsers/devices need their own recorded acceptance. There is no cloud inference.
+
+## Product screenshots
+
+These show the real production interface with an empty notebook; they are not
+handwriting accuracy evidence. Capture details are in [the screenshot record](docs/screenshots/README.md).
+
+![Desktop production notebook](docs/screenshots/desktop.png)
+
+![Narrow-screen production notebook](docs/screenshots/mobile.png)
+
+## Release documentation
+
+- [Remaining work by owner](docs/release-checklist.md)
+- [Architecture](docs/architecture.md) and [model/runtime attribution](docs/model-attribution.md)
+- [Phase 7 reproducibility and submission](docs/phase-7.md)
+- [Live demo script](docs/demo.md) and [manual acceptance record](docs/manual-acceptance.md)
+- [Joint release decision](docs/joint-release-decision.md)
+- [Genuine evaluation workflow](docs/phase-6-recognition.md) and [measured performance](docs/performance.md)
+
+The sections below retain the implementation history and detailed development commands.
+
 ## Notebook foundation (Developer A)
 
 The foundation includes a React/TypeScript/Vite notebook, three aligned Canvas 2D layers,

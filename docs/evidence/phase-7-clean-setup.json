@@ -1,0 +1,83 @@
+{
+  "schemaVersion": 1,
+  "dateInAsiaCalcutta": "2026-10-06",
+  "sourceCommit": "15c25c4f69fb69abc1d0c1cb95b3b7b272fb79e9",
+  "source": "Fresh HTTPS clone of b/recognition-foundation into a separate empty directory",
+  "environment": {
+    "node": "v24.16.0",
+    "os": "win32 10.0.26200",
+    "cpu": "12th Gen Intel(R) Core(TM) i5-12450H"
+  },
+  "install": {
+    "command": "npm ci",
+    "exitCode": 0,
+    "packagesAdded": 94,
+    "auditVulnerabilities": 0,
+    "npmDownloadCacheMayBeReused": true
+  },
+  "preexistingModelOrBuildDirectories": false,
+  "commands": [
+    {
+      "command": "npm run check",
+      "startedAt": "2026-10-05T18:47:56.296Z",
+      "elapsedMs": 4909,
+      "exitCode": 0
+    },
+    {
+      "command": "npm run test:unit",
+      "startedAt": "2026-10-05T18:48:01.207Z",
+      "elapsedMs": 7664,
+      "exitCode": 0
+    },
+    {
+      "command": "npm run test:assets",
+      "startedAt": "2026-10-05T18:48:08.872Z",
+      "elapsedMs": 1378,
+      "exitCode": 0
+    },
+    {
+      "command": "npm run assets:prepare",
+      "startedAt": "2026-10-05T18:48:10.251Z",
+      "elapsedMs": 16062,
+      "exitCode": 0
+    },
+    {
+      "command": "npm run assets:verify",
+      "startedAt": "2026-10-05T18:48:26.315Z",
+      "elapsedMs": 1239,
+      "exitCode": 0
+    },
+    {
+      "command": "npm run build:pages",
+      "startedAt": "2026-10-05T18:48:27.555Z",
+      "elapsedMs": 5645,
+      "exitCode": 0
+    },
+    {
+      "command": "npm run build:lab",
+      "startedAt": "2026-10-05T18:48:33.201Z",
+      "elapsedMs": 5197,
+      "exitCode": 0
+    },
+    {
+      "command": "npm run verify:production",
+      "startedAt": "2026-10-05T18:48:38.400Z",
+      "elapsedMs": 2374,
+      "exitCode": 0
+    }
+  ],
+  "scope": "Clean setup and engineering verification; not genuine handwriting accuracy or physical-device acceptance.",
+  "production": {
+    "version": "65c8f66148592467556514b6",
+    "criticalFiles": 21,
+    "bytes": 42004089
+  },
+  "lockfileSha256": "4e076501aa67a955524bc163913f18de2a9c7c4fc6c088df966ac32aa8138667",
+  "verificationCounts": {
+    "unitTests": 187,
+    "unitFiles": 13,
+    "assetTests": 8,
+    "checkWarnings": 6,
+    "warningsPreexisting": true
+  }
+}

@@ -1,5 +1,15 @@
 # CalcInk: joint release decision
 
+## Follow-up on 6 October 2026
+
+The user confirmed no report paths or manual test results are available. Final
+acceptance therefore remains HOLD. The [single release checklist](release-checklist.md)
+now consolidates A/B/joint ownership. Phase 7 adds current architecture/attribution,
+usage, production screenshots, a demo script and fresh setup/browser evidence.
+Physical results, genuine handwriting reports, the actual demo and both developers'
+approval still need to be recorded. The original candidate review below is retained
+as historical evidence; this documentation batch is not a new quality sign-off.
+
 ## Decision on 5 October 2026
 
 **Final release acceptance: HOLD pending recorded handwriting and physical-input results.**

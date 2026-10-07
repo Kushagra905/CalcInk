@@ -47,6 +47,9 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
+        env:
+          # Browser WASM inference does not need the native CUDA download.
+          ONNXRUNTIME_NODE_INSTALL: skip
       - name: Verify published version and asset hashes
         env:
           DEPLOYMENT_URL: ${{ needs.deploy.outputs.page_url }}

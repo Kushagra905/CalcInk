@@ -36,8 +36,10 @@ export function evaluateTranscript(raw: string): TranscriptEvaluation {
     return {
       normalizedTranscript: normalized.transcript,
       outcome:
-        error.code === "DIVISION_BY_ZERO"
-          ? { kind: "undefined", code: "DIVISION_BY_ZERO" }
+        error.code === "DIVISION_BY_ZERO" ||
+        error.code === "INDETERMINATE_POWER" ||
+        error.code === "NON_REAL_POWER"
+          ? { kind: "undefined", code: error.code }
           : { kind: "invalid", code: error.code },
     };
   }

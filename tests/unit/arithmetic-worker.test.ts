@@ -124,33 +124,40 @@ describe("trial worker arithmetic integration", () => {
     expect(runtime.dispose).toHaveBeenCalledTimes(1);
     expect(replies().some((message) => message.type === "READY")).toBe(false);
   });
-  it("runs a raw model result through arithmetic before replying", async () => {
-    await ready();
-    const recognized: RecognitionResponse = {
-      ...request,
-      modelId: candidate.modelId,
-      transcript: "18+4×3=",
-      outcome: { kind: "unrecognized", code: "EVALUATION_ONLY" },
-      visibleInkBounds: { x: 10, y: 20, width: 100, height: 30 },
-      timing: { preprocessMs: 2, inferenceMs: 8, evaluateMs: 0 },
-    };
-    runtime.recognize.mockResolvedValue(recognized);
-    send({ type: "RECOGNIZE", request });
-    await vi.waitFor(() =>
-      expect(replies()).toContainEqual({
-        type: "RESULT",
-        response: expect.objectContaining({
-          epoch: 1,
-          rowId: "row-1",
-          rowRevision: 2,
-          requestId: 3,
-          normalizedTranscript: "18+4*3=",
-          outcome: { kind: "answer", value: "30" },
+  it.each([
+    ["18+4×3=", "18+4*3=", "30"],
+    ["4 ^ { 2 } = =", "4^(2)=", "16"],
+  ])(
+    "runs raw model result %s through arithmetic before replying",
+    async (transcript, normalizedTranscript, value) => {
+      await ready();
+      const recognized: RecognitionResponse = {
+        ...request,
+        modelId: candidate.modelId,
+        transcript,
+        outcome: { kind: "unrecognized", code: "EVALUATION_ONLY" },
+        visibleInkBounds: { x: 10, y: 20, width: 100, height: 30 },
+        timing: { preprocessMs: 2, inferenceMs: 8, evaluateMs: 0 },
+      };
+      runtime.recognize.mockResolvedValue(recognized);
+      send({ type: "RECOGNIZE", request });
+      await vi.waitFor(() =>
+        expect(replies()).toContainEqual({
+          type: "RESULT",
+          response: expect.objectContaining({
+            epoch: 1,
+            rowId: "row-1",
+            rowRevision: 2,
+            requestId: 3,
+            transcript,
+            normalizedTranscript,
+            outcome: { kind: "answer", value },
+          }),
         }),
-      }),
-    );
-    expect(runtime.recognize).toHaveBeenCalledTimes(1);
-  });
+      );
+      expect(runtime.recognize).toHaveBeenCalledTimes(1);
+    },
+  );
   it("retains decoder-limit errors instead of calculating a plausible prefix", async () => {
     await ready();
     runtime.recognize.mockResolvedValue({

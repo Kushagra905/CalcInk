@@ -247,6 +247,46 @@ test("answer ink uses Comic Sans and matches the expression height beside the ha
   expect(Math.abs((answer.top + answer.bottom) / 2 - 80)).toBeLessThan(2);
 });
 
+test("LaTeX powers and repeated equals calculate inline while raised strokes stay in one expression", async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    const writes: string[] = [];
+    Reflect.set(window, "powerAnswerWrites", writes);
+    const fill = CanvasRenderingContext2D.prototype.fillText;
+    CanvasRenderingContext2D.prototype.fillText = function (
+      text,
+      x,
+      y,
+      maxWidth,
+    ) {
+      writes.push(text);
+      if (maxWidth === undefined) fill.call(this, text, x, y);
+      else fill.call(this, text, x, y, maxWidth);
+    };
+  });
+  await page.goto(`/?transcript=${encodeURIComponent("4 ^ { 2 } = =")}`);
+  await expect(page.getByText("Mock ready", { exact: true })).toBeVisible();
+  await gesture(page, [
+    [100, 100],
+    [130, 160],
+  ]);
+  await gesture(page, [
+    [155, 60],
+    [170, 80],
+  ]);
+  const row = page.locator('[data-row="row-1"]');
+  await expect(row).toContainText("Ready");
+  await expect(row.locator(".row-transcript")).toHaveText("4^(2)=");
+  await expect(page.locator(".row-feedback.ready")).toHaveCount(1);
+  const glyphs = await page.evaluate(
+    () => Reflect.get(window, "powerAnswerWrites") as string[],
+  );
+  expect(glyphs).toContain("1");
+  expect(glyphs).toContain("6");
+  expect((await bitmap(page, "results", 0)).hasInk).toBe(true);
+});
+
 test("recognition failure retries without losing ink or history", async ({
   page,
 }) => {

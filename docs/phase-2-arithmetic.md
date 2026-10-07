@@ -17,19 +17,22 @@ All expression processing for recognition runs in the trial worker. The UI impor
 ```text
 expression = term ((+ | -) term)*
 term       = unary ((* | /) unary)*
-unary      = (+ | -) unary | primary
+unary      = (+ | -) unary | power
+power      = primary ('^' unary)?
 primary    = number | '(' expression ')'
 number     = digits ('.' digits?)? | '.' digits
 ```
 
-Binary operators are left associative; multiplication/division bind before addition/subtraction. Unary signs bind before binary operators. Parentheses are supported by arithmetic; reliable handwriting recognition of parentheses is not claimed.
+Powers associate rightward (`2^3^2 = 512`) and bind before unary signs (`-4^2 = -16`; `(-4)^2 = 16`). A signed exponent is allowed (`2^-3 = 0.125`). Other binary operators are left associative; multiplication/division bind before addition/subtraction. Parentheses are supported by arithmetic; reliable handwriting recognition of parentheses is not claimed.
 
 - Maps `×`, `·`, `\times`, `\cdot` to `*`; `÷` and `\div` to `/`; Unicode `−` to `-`.
 - Removes whitespace and only these LaTeX spacing commands: `\,`, `\;`, `\:`, `\!`, backslash-space, `\quad`, `\qquad`, `\space`.
 - Accepts one outer pair of `$…$`, `$$…$$`, `\(…\)`, or `\[…\]`. `\left`/`\right` are allowed only before the matching opening/closing parenthesis character. The parser still validates balance.
 - Requires exactly one terminal `=` before returning an answer. Supported partial text without `=` remains incomplete. A complete expression is fully parsed before arithmetic; malformed `8/0+=` is invalid, not a division-by-zero answer.
-- Rejects fractions, powers, variables, scientific/hex notation, unknown commands, implicit multiplication, separate equals positions, and text after equals. Consecutive equals signs collapse to one, including supported spacing between them. No missing digits, operators or equals are inserted.
+- Accepts `^`, LaTeX powers such as `4^{2}` and `2^{3^{2}}`, and Unicode superscripts such as `4²` and `2⁻³`. Exponent grouping is retained. Nearby raised strokes just above/right of a base remain in its recognition group. Plain `42` is never guessed to mean `4²`.
+- Rejects fractions, variables, scientific/hex notation, unknown commands, implicit multiplication, separate equals positions, and text after equals. Consecutive equals signs collapse to one, including supported spacing between them. No missing digits, operators or equals are inserted.
 - Limits raw text to 4,096 characters before processing; normalized text to 128 characters including `=`; arithmetic operators, including unary signs, to 64. Parser calls also enforce length/operator bounds.
+- Power exponents have magnitude at most 10,000. Fixed output has at most 1,024 integer digits, checked before string allocation and after rounding. Larger powers return a readable limit message. Negative bases require integer exponents; fractional powers use non-negative bases. Zero to a negative power is division by zero, and `0^0` is explicitly undefined.
 
 ## Arithmetic and result states
 
@@ -44,6 +47,11 @@ The library supports independent constructors and rounding controls; see the [of
 | `-3×-2=` | answer `6` |
 | `.5+1.25=` | answer `1.75` |
 | `0.1+0.2=` | answer `0.3` |
+| `4^2=`, `4^{2}= =`, `4²=` | answer `16` |
+| `2^-3=` | answer `0.125` |
+| `16^0.5=` | answer `4` |
+| `0^0=` | undefined `INDETERMINATE_POWER` |
+| `(-4)^0.5=` | undefined `NON_REAL_POWER` |
 | `8÷0=` | undefined `DIVISION_BY_ZERO`, shown as `Undefined` |
 | `18+4` | incomplete |
 | `12+=`, `1.2.3=` | invalid `INVALID_EXPRESSION` |

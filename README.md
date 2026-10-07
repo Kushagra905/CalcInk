@@ -12,7 +12,7 @@ Built for the Inter IIT Software Development Bootcamp with React, TypeScript,
 Vite, Canvas 2D, ONNX Runtime Web and decimal.js.
 
 - Continuous ruled pages with pen, whole-stroke erasing and pixel erasing.
-- Inline arithmetic with precedence, decimals, unary signs and division-by-zero feedback.
+- Inline arithmetic with precedence, decimals, unary signs, powers and undefined-result feedback.
 - Up to 12 named pages, independent undo/redo, zoom, pan and focus mode.
 - Local autosave, PNG export and whole-notebook JSON backup/restore.
 - Offline use after the production app finishes preparing its verified files.
@@ -54,7 +54,7 @@ Development servers do not provide the production offline cache.
 
 </details>
 
-Captured from the current production build after **Model ready** and **Ready
+Captured from the production notebook after **Model ready** and **Ready
 offline**. These show an empty notebook; the narrow view is browser emulation.
 [Capture details and version](docs/screenshots/README.md).
 
@@ -69,11 +69,16 @@ offline**. These show an empty notebook; the narrow view is browser emulation.
    For **Invalid expression** or **Could not read this; rewrite clearly**, check
    the notation or rewrite it. **Leave room after =** means the answer cannot fit.
 
-The handwriting scope is digits `0–9`, `+`, `−`, `×`, `÷`, `.`, and terminal `=`.
+The core handwriting symbols are digits `0–9`, `+`, `−`, `×`, `÷`, `.`, and terminal `=`.
 The arithmetic parser also accepts `*`, `/` and parentheses, but handwritten
-parentheses have not been validated. Fractions, variables, powers, graphs and
-two-dimensional equation layouts are outside the current scope. Exact division
-by zero displays **Undefined**.
+parentheses have not been validated. Power transcripts such as `4^2=`, `4^{2}=`,
+and `4²=` calculate `16`; consecutive `==` or `= =` count as one completion marker.
+A transcript of `42` remains forty-two; the app does not guess a missing exponent.
+[Power implementation and regression](docs/power-fix.md).
+
+Fractions, variables, graphs and two-dimensional equation layouts are outside the
+current scope. Exact division by zero, `0^0`, and powers without a real-number
+result display **Undefined**.
 
 | Control | Action |
 |---|---|

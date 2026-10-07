@@ -32,7 +32,15 @@ export function writingGroup(
         0,
       );
       const tolerance = Math.max(12, Math.min(28, bounds.height * 0.3));
-      return gap <= tolerance
+      // A raised exponent belongs to its base when it starts just above/right
+      // of that expression, even when it is outside the normal line tolerance.
+      const right = bounds.x + bounds.width;
+      const superscript =
+        point.y < bounds.y &&
+        point.x >= right - 8 &&
+        point.x <= right + Math.max(16, Math.min(80, bounds.height)) &&
+        gap <= Math.max(16, Math.min(48, bounds.height * 0.8));
+      return gap <= tolerance || superscript
         ? [
             {
               id: row.rowId,

@@ -114,7 +114,6 @@ describe("deterministic arithmetic", () => {
   });
   it.each([
     String.raw`\frac{1}{2}=`,
-    "2^3=",
     "1e3=",
     "0x10=",
     "x+2=",

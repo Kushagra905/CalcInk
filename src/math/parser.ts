@@ -10,7 +10,7 @@ export type Expression =
     }
   | {
       readonly kind: "binary";
-      readonly operator: "+" | "-" | "*" | "/";
+      readonly operator: "+" | "-" | "*" | "/" | "^";
       readonly left: Expression;
       readonly right: Expression;
     };
@@ -19,7 +19,7 @@ export type Expression =
 export function parseExpression(source: string): Expression {
   if (source.length > expressionLimits.normalizedCharacters)
     throw new ExpressionError("INPUT_TOO_LONG");
-  if ((source.match(/[+\-*/]/g)?.length ?? 0) > expressionLimits.operators)
+  if ((source.match(/[+\-*/^]/g)?.length ?? 0) > expressionLimits.operators)
     throw new ExpressionError("TOO_MANY_OPERATORS");
   const tokens = tokenize(source);
   let index = 0;
@@ -45,7 +45,15 @@ export function parseExpression(source: string): Expression {
   function unary(): Expression {
     if (take("+")) return { kind: "unary", operator: "+", operand: unary() };
     if (take("-")) return { kind: "unary", operator: "-", operand: unary() };
-    return primary();
+    return power();
+  }
+  function power(): Expression {
+    const left = primary();
+    // Powers associate rightward and bind before the sign of the base:
+    // 2^3^2 = 2^(3^2), -4^2 = -(4^2), and 2^-2 is allowed.
+    return take("^")
+      ? { kind: "binary", operator: "^", left, right: unary() }
+      : left;
   }
   function term(): Expression {
     let left = unary();

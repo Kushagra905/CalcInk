@@ -1,16 +1,20 @@
 import { expect, type Page, test } from "@playwright/test";
+import { PAGE, ROWS } from "../../src/document/rows";
 import type { InkOperation } from "../../src/document/types";
 
 test.use({ viewport: { width: 1280, height: 1100 } });
 
 async function move(page: Page, x: number, y: number) {
   const canvas = page.locator('[data-layer="live"]');
-  await canvas.scrollIntoViewIfNeeded();
+  await page
+    .locator(".row-guide")
+    .nth(Math.min(ROWS.length - 1, Math.floor(y / 160)))
+    .scrollIntoViewIfNeeded();
   const box = await canvas.boundingBox();
   if (!box) throw new Error("Missing notebook canvas");
   await page.mouse.move(
     box.x + (x / 960) * box.width,
-    box.y + (y / 480) * box.height,
+    box.y + (y / PAGE.height) * box.height,
   );
 }
 
@@ -41,34 +45,35 @@ async function alpha(page: Page, x: number, y: number, layer = "ink") {
           .getContext("2d")
           ?.getImageData(
             Math.floor((point.x / 960) * canvas.width),
-            Math.floor((point.y / 480) * canvas.height),
+            Math.floor((point.y / point.height) * canvas.height),
             1,
             1,
           ).data[3] ?? 0
       );
     },
-    { x, y },
+    { x, y, height: PAGE.height },
   );
 }
 
 async function bitmap(page: Page, layer = "ink", row = 0) {
-  return page
-    .locator(`[data-layer="${layer}"]`)
-    .evaluate(async (canvas: HTMLCanvasElement, index) => {
+  return page.locator(`[data-layer="${layer}"]`).evaluate(
+    async (canvas: HTMLCanvasElement, { index, count }) => {
       const context = canvas.getContext("2d");
       if (!context) throw new Error("No canvas context");
       const data = context.getImageData(
         0,
-        Math.floor((canvas.height / 3) * index),
+        Math.floor((canvas.height / count) * index),
         canvas.width,
-        Math.floor(canvas.height / 3),
+        Math.floor(canvas.height / count),
       ).data;
       const hash = new Uint8Array(await crypto.subtle.digest("SHA-256", data));
       return {
         hash: [...hash].join(","),
         hasInk: data.some((value, i) => i % 4 === 3 && value > 0),
       };
-    }, row);
+    },
+    { index: row, count: ROWS.length },
+  );
 }
 
 async function exportInk(page: Page): Promise<InkOperation[]> {
@@ -175,6 +180,73 @@ test("supported model LaTeX displays readable arithmetic beside an inline answer
   expect((await bitmap(page, "results", 0)).hasInk).toBe(true);
 });
 
+test("repeated equals produce one completion marker and an inline answer", async ({
+  page,
+}) => {
+  await page.goto(`/?transcript=${encodeURIComponent("2+3= = =")}`);
+  await expect(page.getByText("Mock ready", { exact: true })).toBeVisible();
+  await gesture(page, [[150, 60]]);
+  const row = page.locator('[data-row="row-1"]');
+  await expect(row).toContainText("Ready");
+  await expect(row.locator(".row-transcript")).toHaveText("2+3=");
+  expect((await bitmap(page, "results", 0)).hasInk).toBe(true);
+});
+
+test("answer ink uses Comic Sans and matches the expression height beside the handwriting", async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    const writes: {
+      text: string;
+      font: string;
+      x: number;
+      top: number;
+      bottom: number;
+    }[] = [];
+    Reflect.set(window, "answerTypography", writes);
+    const fill = CanvasRenderingContext2D.prototype.fillText;
+    CanvasRenderingContext2D.prototype.fillText = function (
+      text,
+      x,
+      y,
+      maxWidth,
+    ) {
+      const metrics = this.measureText(text);
+      writes.push({
+        text,
+        font: this.font,
+        x,
+        top: y - metrics.actualBoundingBoxAscent,
+        bottom: y + metrics.actualBoundingBoxDescent,
+      });
+      if (maxWidth === undefined) fill.call(this, text, x, y);
+      else fill.call(this, text, x, y, maxWidth);
+    };
+  });
+  await page.goto(`/?transcript=${encodeURIComponent("2+3=")}`);
+  await expect(page.getByText("Mock ready", { exact: true })).toBeVisible();
+  await gesture(page, [
+    [100, 60],
+    [140, 100],
+  ]);
+  await expect(page.locator('[data-row="row-1"]')).toContainText("Ready");
+  const answer = await page.evaluate(() => {
+    const writes = Reflect.get(window, "answerTypography") as {
+      text: string;
+      font: string;
+      x: number;
+      top: number;
+      bottom: number;
+    }[];
+    return writes.findLast((entry) => entry.text === "5");
+  });
+  if (!answer) throw new Error("Missing rendered answer");
+  expect(answer.font).toContain("Comic Sans MS");
+  expect(answer.x).toBeGreaterThan(140);
+  expect(answer.bottom - answer.top).toBeGreaterThan(40);
+  expect(Math.abs((answer.top + answer.bottom) / 2 - 80)).toBeLessThan(2);
+});
+
 test("recognition failure retries without losing ink or history", async ({
   page,
 }) => {
@@ -260,7 +332,7 @@ test("unfinished and malformed expressions keep answers empty and offer distinct
 }) => {
   for (const [transcript, status] of [
     ["18+4", "Keep writing; finish with ="],
-    ["18++=", "Check writing"],
+    ["18++=", "Invalid expression"],
   ]) {
     await page.goto(`/?transcript=${encodeURIComponent(transcript)}`);
     await gesture(page, [[150, 60]]);
@@ -297,55 +369,61 @@ test("a narrow pixel mask preserves the stroke, restores exact pixels and matche
   const mask = operations[1];
   if (mask.kind !== "pixel-mask") throw new Error("Missing mask");
   expect(mask.mask.radius).toBe(1);
-  const comparison = await page.evaluate(async (ops) => {
-    const ink = document.querySelector<HTMLCanvasElement>('[data-layer="ink"]');
-    if (!ink) throw new Error("Missing ink canvas");
-    const url = URL.createObjectURL(
-      new Blob(
-        [
-          `import { replayRow } from '${location.origin}/src/rendering/replay.ts';
+  const comparison = await page.evaluate(
+    async ({ ops, logicalHeight }) => {
+      const ink =
+        document.querySelector<HTMLCanvasElement>('[data-layer="ink"]');
+      if (!ink) throw new Error("Missing ink canvas");
+      const url = URL.createObjectURL(
+        new Blob(
+          [
+            `import { replayRow } from '${location.origin}/src/rendering/replay.ts';
        onmessage = ({ data }) => { const canvas = new OffscreenCanvas(data.width, data.height);
-       const ctx = canvas.getContext('2d'); ctx.setTransform(data.width / 960, 0, 0, data.height / 480, 0, 0);
+       const ctx = canvas.getContext('2d'); ctx.setTransform(data.width / 960, 0, 0, data.height / ${logicalHeight}, 0, 0);
        replayRow(ctx, 'row-1', data.operations); const pixels = ctx.getImageData(0, 0, data.width, data.height).data;
        postMessage(pixels, [pixels.buffer]); };`,
-        ],
-        { type: "text/javascript" },
-      ),
-    );
-    const worker = new Worker(url, { type: "module" });
-    try {
-      const pixels = await new Promise<Uint8ClampedArray>((resolve, reject) => {
-        worker.onmessage = ({ data }) => resolve(data);
-        worker.onerror = () => reject(new Error("Bitmap worker failed"));
-        worker.postMessage({
-          width: ink.width,
-          height: ink.height,
-          operations: ops,
-        });
-      });
-      const displayed = ink
-        .getContext("2d")
-        ?.getImageData(0, 0, ink.width, ink.height).data;
-      if (!displayed) throw new Error("Missing displayed bitmap");
-      let alpha = 0,
-        premultiplied = 0;
-      for (let i = 0; i < pixels.length; i += 4) {
-        alpha = Math.max(alpha, Math.abs(pixels[i + 3] - displayed[i + 3]));
-        for (let channel = 0; channel < 3; channel++)
-          premultiplied = Math.max(
-            premultiplied,
-            Math.abs(
-              Math.round((pixels[i + channel] * pixels[i + 3]) / 255) -
-                Math.round((displayed[i + channel] * displayed[i + 3]) / 255),
-            ),
-          );
+          ],
+          { type: "text/javascript" },
+        ),
+      );
+      const worker = new Worker(url, { type: "module" });
+      try {
+        const pixels = await new Promise<Uint8ClampedArray>(
+          (resolve, reject) => {
+            worker.onmessage = ({ data }) => resolve(data);
+            worker.onerror = () => reject(new Error("Bitmap worker failed"));
+            worker.postMessage({
+              width: ink.width,
+              height: ink.height,
+              operations: ops,
+            });
+          },
+        );
+        const displayed = ink
+          .getContext("2d")
+          ?.getImageData(0, 0, ink.width, ink.height).data;
+        if (!displayed) throw new Error("Missing displayed bitmap");
+        let alpha = 0,
+          premultiplied = 0;
+        for (let i = 0; i < pixels.length; i += 4) {
+          alpha = Math.max(alpha, Math.abs(pixels[i + 3] - displayed[i + 3]));
+          for (let channel = 0; channel < 3; channel++)
+            premultiplied = Math.max(
+              premultiplied,
+              Math.abs(
+                Math.round((pixels[i + channel] * pixels[i + 3]) / 255) -
+                  Math.round((displayed[i + channel] * displayed[i + 3]) / 255),
+              ),
+            );
+        }
+        return { alpha, premultiplied };
+      } finally {
+        worker.terminate();
+        URL.revokeObjectURL(url);
       }
-      return { alpha, premultiplied };
-    } finally {
-      worker.terminate();
-      URL.revokeObjectURL(url);
-    }
-  }, operations);
+    },
+    { ops: operations, logicalHeight: PAGE.height },
+  );
   // Chromium's DOM/Offscreen antialias readback differs by one premultiplied byte at scaled edges.
   expect(comparison.alpha).toBeLessThanOrEqual(1);
   expect(comparison.premultiplied).toBeLessThanOrEqual(1);
@@ -513,7 +591,7 @@ test("pixel previews cancel exactly and whole-stroke erasing ignores already era
   expect((await bitmap(page)).hasInk).toBe(false);
 });
 
-test("a fast whole-stroke sweep is one global history command and stays in its starting row", async ({
+test("a fast whole-stroke sweep crosses the page and remains one global history command", async ({
   page,
 }) => {
   await page.goto("/");
@@ -537,7 +615,7 @@ test("a fast whole-stroke sweep is one global history command and stays in its s
     [200, 230],
   ]);
   expect((await bitmap(page)).hasInk).toBe(false);
-  expect(await bitmap(page, "ink", 1)).toEqual(second);
+  expect((await bitmap(page, "ink", 1)).hasInk).toBe(false);
   await page.getByRole("button", { name: "Undo", exact: true }).click();
   expect(await bitmap(page)).toEqual(first);
   expect(await bitmap(page, "ink", 1)).toEqual(second);

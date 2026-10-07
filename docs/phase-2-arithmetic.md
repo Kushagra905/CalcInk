@@ -28,7 +28,7 @@ Binary operators are left associative; multiplication/division bind before addit
 - Removes whitespace and only these LaTeX spacing commands: `\,`, `\;`, `\:`, `\!`, backslash-space, `\quad`, `\qquad`, `\space`.
 - Accepts one outer pair of `$…$`, `$$…$$`, `\(…\)`, or `\[…\]`. `\left`/`\right` are allowed only before the matching opening/closing parenthesis character. The parser still validates balance.
 - Requires exactly one terminal `=` before returning an answer. Supported partial text without `=` remains incomplete. A complete expression is fully parsed before arithmetic; malformed `8/0+=` is invalid, not a division-by-zero answer.
-- Rejects fractions, powers, variables, scientific/hex notation, unknown commands, implicit multiplication, duplicate equals, and text after equals. No missing digits, operators or equals are inserted. Operator typography maps do not repair recognition mistakes.
+- Rejects fractions, powers, variables, scientific/hex notation, unknown commands, implicit multiplication, separate equals positions, and text after equals. Consecutive equals signs collapse to one, including supported spacing between them. No missing digits, operators or equals are inserted.
 - Limits raw text to 4,096 characters before processing; normalized text to 128 characters including `=`; arithmetic operators, including unary signs, to 64. Parser calls also enforce length/operator bounds.
 
 ## Arithmetic and result states
@@ -47,7 +47,8 @@ The library supports independent constructors and rounding controls; see the [of
 | `8÷0=` | undefined `DIVISION_BY_ZERO`, shown as `Undefined` |
 | `18+4` | incomplete |
 | `12+=`, `1.2.3=` | invalid `INVALID_EXPRESSION` |
-| `2==` | invalid `MULTIPLE_EQUALS` |
+| `2==` or `2= =` | answer `2`, normalized to `2=` |
+| `1=2=` | invalid `MULTIPLE_EQUALS` |
 | `\frac{1}{2}=` | unrecognized `UNSUPPORTED_COMMAND` |
 | Decoder reaches its limit | unrecognized `OUTPUT_LIMIT`; not evaluated |
 | Surviving ink produces no text | unrecognized `EMPTY_TRANSCRIPT` |

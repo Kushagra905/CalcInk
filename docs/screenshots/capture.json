@@ -1,5 +1,5 @@
 {
-  "recordedAt": "2026-10-05T18:54:09.897Z",
+  "recordedAt": "2026-10-07T15:30:47.887Z",
   "browser": "153.0.8010.12",
   "headless": true,
   "production": true,
@@ -12,7 +12,7 @@
       "width": 1280,
       "height": 1100,
       "dpr": 2,
-      "version": "65c8f66148592467556514b6",
+      "version": "66b990cae75101193a29e4a0",
       "noHorizontalOverflow": true,
       "errors": []
     },
@@ -21,7 +21,7 @@
       "width": 390,
       "height": 960,
       "dpr": 2,
-      "version": "65c8f66148592467556514b6",
+      "version": "66b990cae75101193a29e4a0",
       "noHorizontalOverflow": true,
       "errors": []
     }

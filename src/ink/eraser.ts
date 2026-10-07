@@ -17,7 +17,7 @@ export function hitVisibleStroke(
   const operation = operations[index];
   if (operation.kind !== "stroke") return false;
   const stroke = operation.stroke;
-  const row = getRowConfig(stroke.rowId);
+  getRowConfig(stroke.rowId);
   const bounds = stroke.bounds;
   const left = Math.max(
     0,
@@ -33,11 +33,11 @@ export function hitVisibleStroke(
     ),
   );
   const top = Math.max(
-    row.top,
+    0,
     Math.floor(Math.max(bounds.y - 1, Math.min(from.y, to.y) - radius - 1)),
   );
   const bottom = Math.min(
-    row.top + row.writingHeight,
+    PAGE.height,
     Math.ceil(
       Math.min(
         bounds.y + bounds.height + 1,
@@ -83,15 +83,14 @@ export function maskTouchesInk(
   operations: readonly InkOperation[],
   mask: EraseMask,
 ): boolean {
-  const row = getRowConfig(mask.rowId);
+  getRowConfig(mask.rowId);
   context.canvas.width = PAGE.width;
-  context.canvas.height = row.writingHeight;
-  context.translate(0, -row.top);
+  context.canvas.height = PAGE.height;
   replayInk(context, operations, "white");
   context.globalCompositeOperation = "destination-in";
   context.fillStyle = context.strokeStyle = "white";
   drawPath(context, mask.points, mask.radius * 2);
   return context
-    .getImageData(0, 0, PAGE.width, row.writingHeight)
+    .getImageData(0, 0, PAGE.width, PAGE.height)
     .data.some((alpha, i) => i % 4 === 3 && alpha > 0);
 }

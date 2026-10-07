@@ -1,13 +1,14 @@
 import { expect, type Page, test } from "@playwright/test";
+import { PAGE, ROWS } from "../../src/document/rows";
 
 // Automated marks exercise capture mechanics; they are never genuine handwriting evidence.
 async function draw(page: Page, row = 0) {
   const canvas = page.locator('[data-layer="live"]');
-  await canvas.scrollIntoViewIfNeeded();
+  await page.locator(".row-guide").nth(row).scrollIntoViewIfNeeded();
   const box = await canvas.boundingBox();
   if (!box) throw new Error("Missing handwriting canvas");
   const x = box.x + box.width * 0.15;
-  const y = box.y + box.height * (row / 3 + 0.08);
+  const y = box.y + box.height * ((ROWS[row].top + 38.4) / PAGE.height);
   await page.mouse.move(x, y);
   await page.mouse.down();
   await page.mouse.move(x + 40, y + 10, { steps: 4 });
@@ -95,6 +96,8 @@ test("guided captures persist, preserve other rows, and keep held-out exports an
     }
   });
   expect(reused).toContain("already saved");
+  // The notebook now restores row-two ink; changing datasets explicitly clears it.
+  page.once("dialog", (dialog) => dialog.accept());
   await capture.getByLabel("Capture dataset").selectOption("held-out");
   await expect(page.getByText("Capture only", { exact: true })).toBeVisible();
   await expect.poll(() => page.workers().length).toBe(0);

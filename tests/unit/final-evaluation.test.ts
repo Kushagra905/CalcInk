@@ -138,12 +138,12 @@ describe("final scoring", () => {
     expect(score.symbols["+"].deletions).toBeGreaterThan(0);
     expect(score.symbols["*"].failedSampleIds).toContain("held-A-01");
   });
-  it("does not repair repeated equals and reports the inserted equals", () => {
+  it("accepts repeated equals for arithmetic but counts the recognition insertion", () => {
     const batch = entries();
     batch[0] = { ...batch[0], result: result("21+8*2==") };
     const score = summarizeFinal(batch);
     expect(score.exactCanonical).toBe(49);
-    expect(score.arithmeticCorrect).toBe(49);
+    expect(score.arithmeticCorrect).toBe(50);
     expect(score.symbols["="].insertions).toBe(1);
     expect(score.symbols["2"].deletions).toBe(0);
   });

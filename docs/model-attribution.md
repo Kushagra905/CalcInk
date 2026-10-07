@@ -34,7 +34,7 @@ Runtime files are copied from the installed package, checked against `package-lo
 
 The worker replays strokes and pixel masks to obtain surviving ink, crops with a 16-unit margin, preserves aspect ratio and converts alpha to white-on-black floats. CoMER input height is 256, with padded width in multiples of 64 up to 1024 and an accompanying content mask. See `src/recognition/rasterize.ts` and `adapters/ink-on.ts`.
 
-Raw model text is retained. Strict normalization accepts known multiplication/division/minus typography and spacing; it never invents missing equals or removes duplicate equals. Decimal arithmetic uses `decimal.js@10.6.0` with isolated 28-digit precision settings. Model decoding and deterministic arithmetic are separate stages.
+Raw model text is retained. Normalization accepts known multiplication/division/minus typography and spacing, and treats consecutive equals signs (including supported spacing between them) as one equals. It never invents missing equals. Decimal arithmetic uses `decimal.js@10.6.0` with isolated 28-digit precision settings. Model decoding and deterministic arithmetic are separate stages. Historical reports of duplicate-equals rejection describe the earlier normalization policy; their raw measurements remain unchanged.
 
 ## Alternatives and measured scope
 

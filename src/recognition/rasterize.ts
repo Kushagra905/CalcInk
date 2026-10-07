@@ -1,10 +1,13 @@
+import { getRowConfig, PAGE } from "../document/rows";
 import type { Bounds, InkOperation, RowId } from "../document/types";
 import { replayInk } from "../ink/replay";
 
 export function rowTop(rowId: RowId): number {
-  const index = ["row-1", "row-2", "row-3"].indexOf(rowId);
-  if (index < 0) throw new Error("UNKNOWN_ROW");
-  return index * 160;
+  try {
+    return getRowConfig(rowId).top;
+  } catch {
+    throw new Error("UNKNOWN_ROW");
+  }
 }
 
 export function alphaBounds(
@@ -36,8 +39,21 @@ export function rasterizeRow(
 ) {
   if (typeof OffscreenCanvas === "undefined")
     throw new Error("OFFSCREEN_CANVAS_UNSUPPORTED");
-  const top = rowTop(rowId);
-  const canvas = new OffscreenCanvas(960, 136);
+  rowTop(rowId);
+  let top = PAGE.height;
+  let bottom = 0;
+  for (const operation of operations) {
+    if (operation.kind !== "stroke") continue;
+    const { points, width } = operation.stroke;
+    for (const point of points) {
+      top = Math.min(top, point.y - width / 2 - 1);
+      bottom = Math.max(bottom, point.y + width / 2 + 1);
+    }
+  }
+  top = Math.max(0, Math.floor(top));
+  bottom = Math.min(PAGE.height, Math.ceil(bottom));
+  const writingHeight = Math.max(1, bottom - top);
+  const canvas = new OffscreenCanvas(PAGE.width, writingHeight);
   try {
     const context = canvas.getContext("2d", { willReadFrequently: true });
     if (!context) throw new Error("CANVAS_UNAVAILABLE");
@@ -54,9 +70,9 @@ export function rasterizeRow(
     context.translate(0, -top);
     replayInk(context, operations);
     const local = alphaBounds(
-      context.getImageData(0, 0, 960, 136).data,
-      960,
-      136,
+      context.getImageData(0, 0, PAGE.width, writingHeight).data,
+      PAGE.width,
+      writingHeight,
     );
     if (!local) return { canvas: null, visibleInkBounds: null };
     const margin = 16;

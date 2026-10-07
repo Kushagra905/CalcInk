@@ -1,24 +1,25 @@
 import { expect, type Page, test } from "@playwright/test";
+import { PAGE, ROWS } from "../../src/document/rows";
 import type { InkOperation } from "../../src/document/types";
 
 async function draw(page: Page, row = 0) {
   const canvas = page.locator('[data-layer="live"]');
-  await canvas.scrollIntoViewIfNeeded();
+  await page.locator(".row-guide").nth(row).scrollIntoViewIfNeeded();
   const box = await canvas.boundingBox();
   if (!box) throw new Error("Missing canvas");
   await page.mouse.move(
     box.x + box.width * 0.2,
-    box.y + box.height * (row / 3 + 0.08),
+    box.y + box.height * ((ROWS[row].top + 38.4) / PAGE.height),
   );
   await page.mouse.down();
   await page.mouse.move(
     box.x + box.width * 0.24,
-    box.y + box.height * (row / 3 + 0.14),
+    box.y + box.height * ((ROWS[row].top + 67.2) / PAGE.height),
     { steps: 8 },
   );
   await page.mouse.move(
     box.x + box.width * 0.28,
-    box.y + box.height * (row / 3 + 0.08),
+    box.y + box.height * ((ROWS[row].top + 38.4) / PAGE.height),
     { steps: 8 },
   );
   await page.mouse.up();
@@ -168,22 +169,23 @@ test("mouse, pen and touch retain logical coordinates and clipped dots at DPR 1,
     const page = await context.newPage();
     await page.goto("/");
     const canvas = page.locator('[data-layer="live"]');
+    await page.locator(".row-guide").nth(2).scrollIntoViewIfNeeded();
     const box = await canvas.boundingBox();
     if (!box) throw new Error("Missing canvas");
     await page.touchscreen.tap(
       box.x + box.width * 0.2,
-      box.y + box.height * 0.75,
+      box.y + box.height * (360 / PAGE.height),
     );
     const original = await exportInk(page, "row-3");
     if (original[0].kind !== "stroke") throw new Error("Missing dot");
     expect(original[0].stroke.points[0].x).toBeCloseTo(192, 0);
     expect(original[0].stroke.points[0].y).toBeCloseTo(360, 0);
     const session = await context.newCDPSession(page);
-    await canvas.scrollIntoViewIfNeeded();
+    await page.locator(".row-guide").first().scrollIntoViewIfNeeded();
     const nextBox = await canvas.boundingBox();
     if (!nextBox) throw new Error("Missing canvas");
     const x = nextBox.x + nextBox.width * 0.3,
-      y = nextBox.y + nextBox.height * 0.08;
+      y = nextBox.y + nextBox.height * (38.4 / PAGE.height);
     await session.send("Input.dispatchMouseEvent", {
       type: "mousePressed",
       x,
@@ -229,11 +231,12 @@ test("mouse, pen and touch retain logical coordinates and clipped dots at DPR 1,
   }
 });
 
-test("coalesced points stay in their starting row, second pointers are ignored, and commits repaint only that row", async ({
+test("coalesced points cross old row boundaries, second pointers are ignored, and commits repaint the page", async ({
   page,
 }) => {
   await page.goto("/");
   const canvas = page.locator('[data-layer="live"]');
+  await page.locator(".row-guide").first().scrollIntoViewIfNeeded();
   const box = await canvas.boundingBox();
   if (!box) throw new Error("Missing canvas");
   await page.getByRole("slider", { name: "Width" }).fill("6");
@@ -248,7 +251,10 @@ test("coalesced points stay in their starting row, second pointers are ignored, 
       { once: true },
     ),
   );
-  await page.mouse.move(box.x + box.width * 0.2, box.y + box.height * 0.08);
+  await page.mouse.move(
+    box.x + box.width * 0.2,
+    box.y + box.height * (38.4 / PAGE.height),
+  );
   await page.mouse.down();
   await page.evaluate(() => {
     const clears: unknown[] = [];
@@ -265,7 +271,7 @@ test("coalesced points stay in their starting row, second pointers are ignored, 
       original.call(this, x, y, width, height);
     };
   });
-  await canvas.evaluate((element) => {
+  await canvas.evaluate((element, height) => {
     const box = element.getBoundingClientRect();
     element.dispatchEvent(
       new PointerEvent("pointerdown", {
@@ -273,7 +279,7 @@ test("coalesced points stay in their starting row, second pointers are ignored, 
         isPrimary: true,
         button: 0,
         clientX: box.x + 20,
-        clientY: box.y + box.height * 0.7,
+        clientY: box.y + box.height * (336 / height),
       }),
     );
     const event = new PointerEvent("pointermove", {
@@ -283,18 +289,18 @@ test("coalesced points stay in their starting row, second pointers are ignored, 
       value: () => [
         new PointerEvent("pointermove", {
           clientX: box.x + box.width * 0.25,
-          clientY: box.y + box.height * 0.15,
+          clientY: box.y + box.height * (72 / height),
           pressure: 0.4,
         }),
         new PointerEvent("pointermove", {
           clientX: box.x + box.width * 0.3,
-          clientY: box.y + box.height * 0.5,
+          clientY: box.y + box.height * (240 / height),
           pressure: 0.7,
         }),
       ],
     });
     element.dispatchEvent(event);
-  });
+  }, PAGE.height);
   await expect
     .poll(() =>
       page.evaluate(
@@ -316,15 +322,17 @@ test("coalesced points stay in their starting row, second pointers are ignored, 
   expect(operations[0].stroke.width).toBe(6);
   expect(
     operations[0].stroke.points.some(
-      (point) => Math.abs(point.pressure - 0.7) < 0.000001 && point.y === 136,
+      (point) =>
+        Math.abs(point.pressure - 0.7) < 0.000001 &&
+        Math.abs(point.y - 240) < 0.001,
     ),
   ).toBe(true);
-  expect(operations[0].stroke.points.every((point) => point.y <= 136)).toBe(
-    true,
-  );
+  expect(
+    operations[0].stroke.points.every((point) => point.y <= PAGE.height),
+  ).toBe(true);
   expect(
     await page.evaluate(
       () => (window as unknown as { testClears: unknown[] }).testClears,
     ),
-  ).toEqual([[0, 0, 960, 160]]);
+  ).toEqual([[0, 0, PAGE.width, PAGE.height]]);
 });

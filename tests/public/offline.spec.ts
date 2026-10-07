@@ -1,6 +1,7 @@
 import { writeFile } from "node:fs/promises";
 import os from "node:os";
 import { expect, type Page, test } from "@playwright/test";
+import { PAGE } from "../../src/document/rows";
 import type { RecognitionResponse } from "../../src/recognition/protocol";
 
 declare global {
@@ -10,18 +11,18 @@ declare global {
 }
 async function stroke(page: Page, points: [number, number][]) {
   const canvas = page.locator('[data-layer="live"]');
-  await canvas.scrollIntoViewIfNeeded();
+  await page.locator(".row-guide").first().scrollIntoViewIfNeeded();
   const box = await canvas.boundingBox();
   if (!box) throw new Error("Missing notebook canvas");
   await page.mouse.move(
     box.x + (points[0][0] * box.width) / 960,
-    box.y + (points[0][1] * box.height) / 480,
+    box.y + (points[0][1] * box.height) / PAGE.height,
   );
   await page.mouse.down();
   for (const [x, y] of points.slice(1))
     await page.mouse.move(
       box.x + (x * box.width) / 960,
-      box.y + (y * box.height) / 480,
+      box.y + (y * box.height) / PAGE.height,
     );
   await page.mouse.up();
 }

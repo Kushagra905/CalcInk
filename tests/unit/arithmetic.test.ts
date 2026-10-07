@@ -97,7 +97,10 @@ describe("deterministic arithmetic", () => {
     });
   });
   it.each([
-    ["2==", "MULTIPLE_EQUALS"],
+    ["==", "EMPTY_EXPRESSION"],
+    ["= =", "EMPTY_EXPRESSION"],
+    ["1==2", "NON_TERMINAL_EQUALS"],
+    ["1==2==", "MULTIPLE_EQUALS"],
     ["1=2", "NON_TERMINAL_EQUALS"],
     ["2=3", "NON_TERMINAL_EQUALS"],
     ["=", "EMPTY_EXPRESSION"],
@@ -127,6 +130,40 @@ describe("deterministic arithmetic", () => {
 });
 
 describe("normalization and resource bounds", () => {
+  it.each([
+    ["2==", "2=", "2"],
+    ["18+4×3===", "18+4*3=", "30"],
+    ["1 = =", "1=", "1"],
+    ["2+3= \n =\t=", "2+3=", "5"],
+    [String.raw`$2+3=\quad=\;=$`, "2+3=", "5"],
+  ])(
+    "treats repeated completion markers in %s as one equals",
+    (raw, canonical, value) => {
+      expect(evaluateTranscript(raw)).toEqual({
+        normalizedTranscript: canonical,
+        outcome: { kind: "answer", value },
+      });
+    },
+  );
+  it("retains arithmetic validation after collapsing equals", () => {
+    expect(evaluateTranscript("12+==").outcome).toEqual({
+      kind: "invalid",
+      code: "INVALID_EXPRESSION",
+    });
+    expect(evaluateTranscript("1/(0.1-0.1)= =").outcome).toEqual({
+      kind: "undefined",
+      code: "DIVISION_BY_ZERO",
+    });
+  });
+  it("counts canonical length while still bounding raw repeated markers", () => {
+    expect(
+      evaluateTranscript(`${"1".repeat(127)}${"=".repeat(128)}`).outcome.kind,
+    ).toBe("answer");
+    expect(evaluateTranscript(`1${"=".repeat(4096)}`).outcome).toEqual({
+      kind: "invalid",
+      code: "RAW_INPUT_TOO_LONG",
+    });
+  });
   it("preserves digits, decimals and signs while removing known model spacing", () => {
     expect(
       normalizeExpression(String.raw`\[ − 1 . 2 \quad + \space .5 \qquad = \]`),
@@ -229,10 +266,11 @@ describe("worker response arithmetic", () => {
     };
     expect(evaluateRecognition(response)).toBe(response);
   });
-  it("returns invalid for a real model's duplicate equals without correcting it", () => {
-    expect(evaluateRecognition(result("1 = =")).outcome).toEqual({
-      kind: "invalid",
-      code: "MULTIPLE_EQUALS",
+  it("preserves raw repeated equals while evaluating the canonical completion marker", () => {
+    expect(evaluateRecognition(result("1 = ="))).toMatchObject({
+      transcript: "1 = =",
+      normalizedTranscript: "1=",
+      outcome: { kind: "answer", value: "1" },
     });
   });
   it("distinguishes unreadable surviving ink from an empty row", () => {

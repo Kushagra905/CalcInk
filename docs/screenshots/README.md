@@ -1,7 +1,7 @@
 # Production UI screenshots
 
-Captured on 6 October 2026 (Asia/Calcutta), from the fresh production Pages build
-served at `/CalcInk/`, version `65c8f66148592467556514b6`. Chromium
+Captured on 7 October 2026 (Asia/Calcutta), from the redesigned local production Pages build
+served at `/CalcInk/`, version `66b990cae75101193a29e4a0`. Chromium
 153.0.8010.12, headless, DPR 2. Model initialization and verified offline preparation
 completed before capture. Both screenshots were visually inspected.
 

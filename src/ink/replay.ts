@@ -51,7 +51,7 @@ export function drawPath(
 export function replayInk(
   context: InkContext,
   operations: readonly InkOperation[],
-  color = "#111827",
+  color = "#30352f",
 ): void {
   context.save();
   context.fillStyle = color;

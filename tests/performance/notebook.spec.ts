@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import { writeFile } from "node:fs/promises";
 import os from "node:os";
 import { expect, type Page, test } from "@playwright/test";
+import { PAGE, ROW_COUNT } from "../../src/document/rows";
 import type { RecognitionResponse } from "../../src/recognition/protocol";
 import {
   observeRecognitionMemory,
@@ -48,7 +49,7 @@ async function position(page: Page, x: number, y: number) {
   if (!box) throw new Error("Missing notebook canvas");
   return {
     x: box.x + (x / 960) * box.width,
-    y: box.y + (y / 480) * box.height,
+    y: box.y + (y / PAGE.height) * box.height,
   };
 }
 async function dot(page: Page, x = 130, y = 70) {
@@ -81,7 +82,7 @@ test("measure 60 seconds of drawing during real inference and 200 edit/clear cyc
   page.on("worker", (worker) => {
     wasmTracking = trackWasmAllocations(worker);
   });
-  await page.addInitScript(() => {
+  await page.addInitScript((rowCount) => {
     const qa: Window["calcinkPhase6"] = {
       phase: "off",
       frames: { idle: [], drawing: [] },
@@ -137,7 +138,7 @@ test("measure 60 seconds of drawing during real inference and 200 edit/clear cyc
         if (!input(event)) return;
         const box = (event.target as HTMLCanvasElement).getBoundingClientRect();
         qa.pointerId = event.pointerId;
-        qa.activeRow = `row-${Math.floor(((event.clientY - box.y) / box.height) * 3) + 1}`;
+        qa.activeRow = `row-${Math.floor(((event.clientY - box.y) / box.height) * rowCount) + 1}`;
         qa.downAt = performance.now();
       },
       true,
@@ -190,7 +191,7 @@ test("measure 60 seconds of drawing during real inference and 200 edit/clear cyc
       subtree: true,
       characterData: true,
     });
-  });
+  }, ROW_COUNT);
   const browserErrors: string[] = [];
   page.on("pageerror", (error) => browserErrors.push(error.message));
   await page.goto("./");
@@ -217,7 +218,7 @@ test("measure 60 seconds of drawing during real inference and 200 edit/clear cyc
     await page.mouse.move(start.x, start.y);
     await page.mouse.down();
     await page.evaluate(
-      () =>
+      (logicalHeight) =>
         new Promise<void>((resolve) => {
           const canvas = document.querySelector<HTMLCanvasElement>(
             '[data-layer="live"]',
@@ -238,7 +239,8 @@ test("measure 60 seconds of drawing during real inference and 200 edit/clear cyc
                   ((140 + 50 * Math.sin(elapsed / 180)) / 960) * box.width,
                 clientY:
                   box.y +
-                  ((235 + 25 * Math.sin(elapsed / 120)) / 480) * box.height,
+                  ((235 + 25 * Math.sin(elapsed / 120)) / logicalHeight) *
+                    box.height,
               }),
             );
             if (elapsed >= 2000) resolve();
@@ -246,6 +248,7 @@ test("measure 60 seconds of drawing during real inference and 200 edit/clear cyc
           }
           requestAnimationFrame(move);
         }),
+      PAGE.height,
     );
     await page.mouse.up();
   }

@@ -4,6 +4,7 @@ import {
   connectRecognition,
   MOCK_MODEL_ID,
 } from "../../src/dev/mockCoordinator";
+import { getRowConfig, PAGE } from "../../src/document/rows";
 import { createDocumentStore } from "../../src/document/store";
 import type { DocumentEditEvent, InkOperation } from "../../src/document/types";
 import { clientToPage, strokeBounds } from "../../src/ink/geometry";
@@ -23,7 +24,7 @@ afterEach(() => {
 });
 
 function stroke(rowId = "row-1"): InkOperation {
-  const top = ["row-1", "row-2", "row-3"].indexOf(rowId) * 160;
+  const top = getRowConfig(rowId).top;
   const points = [{ x: 20, y: top + 40, pressure: 0.5, t: 1 }];
   return {
     kind: "stroke",
@@ -94,10 +95,10 @@ describe("document and geometry contract", () => {
   it("maps an offset, scaled canvas to logical coordinates and retains dot width", () => {
     expect(
       clientToPage(250, 170, { left: 10, top: 50, width: 480, height: 240 }),
-    ).toEqual({ x: 480, y: 240 });
+    ).toEqual({ x: 480, y: PAGE.height / 2 });
     expect(
       clientToPage(970, 530, { left: 10, top: 50, width: 960, height: 480 }),
-    ).toEqual({ x: 960, y: 480 });
+    ).toEqual({ x: PAGE.width, y: PAGE.height });
     expect(() =>
       clientToPage(0, 0, { left: 0, top: 0, width: 0, height: 480 }),
     ).toThrow();

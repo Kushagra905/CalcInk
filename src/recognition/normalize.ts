@@ -22,8 +22,11 @@ const commands: Readonly<Record<string, string>> = {
   space: "",
 };
 
-/** Only known typography/spacing is rewritten. Missing math tokens are never supplied. */
-export function normalizeExpression(raw: string): NormalizationResult {
+/** Normalize supported typography, spacing and repeated equals; never supply missing tokens. */
+export function normalizeExpression(
+  raw: string,
+  options: { readonly preserveRepeatedEquals?: boolean } = {},
+): NormalizationResult {
   const fail = (
     code: string,
     kind: "invalid" | "unrecognized" = "invalid",
@@ -85,6 +88,11 @@ export function normalizeExpression(raw: string): NormalizationResult {
     transcript += canonical;
     index++;
   }
+  // Recognizers can repeat the completion marker, including with spacing between it.
+  // Collapse only adjacent markers; equals separated by math remain distinct.
+  // Accuracy scoring retains duplicates to count recognition errors honestly.
+  if (!options.preserveRepeatedEquals)
+    transcript = transcript.replace(/=+/g, "=");
   if (transcript.length > expressionLimits.normalizedCharacters)
     return fail("INPUT_TOO_LONG");
   if ((transcript.match(/[+\-*/]/g)?.length ?? 0) > expressionLimits.operators)

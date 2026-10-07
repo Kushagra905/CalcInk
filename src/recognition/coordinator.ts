@@ -1,4 +1,3 @@
-import { ROWS } from "../document/rows";
 import type { DocumentStore } from "../document/store";
 import type { RowSnapshot } from "../document/types";
 import type { ModelCandidate } from "./candidates";
@@ -134,7 +133,7 @@ export function createCoordinator(
     ready = false;
     clearTimeout(timer);
     pending.clear();
-    for (const row of ROWS) callbacks.onClear(row.id);
+    for (const row of document.getRows()) callbacks.onClear(row.rowId);
     const run = generation;
     void client
       .load(options.candidate, options.baseUrl, options.manifest)
@@ -151,7 +150,7 @@ export function createCoordinator(
     if (event.epoch !== epoch) {
       epoch = event.epoch;
       pending.clear();
-      for (const row of ROWS) callbacks.onClear(row.id);
+      for (const row of document.getRows()) callbacks.onClear(row.rowId);
     }
     for (const row of event.rows) {
       pending.delete(row.rowId);

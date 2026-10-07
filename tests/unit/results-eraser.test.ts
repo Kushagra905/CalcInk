@@ -5,7 +5,11 @@ import {
   segmentDistance,
 } from "../../src/ink/geometry";
 import type { RecognitionResponse } from "../../src/recognition/protocol";
-import { answerLayout, resultStatus } from "../../src/rendering/results";
+import {
+  answerGlyphs,
+  answerLayout,
+  resultStatus,
+} from "../../src/rendering/results";
 
 const result: RecognitionResponse = {
   epoch: 0,
@@ -20,9 +24,21 @@ const result: RecognitionResponse = {
 };
 
 describe("result placement and swept geometry", () => {
-  it("anchors to surviving ink, uses the row baseline and shrinks only down to 16", () => {
+  it("aligns proportional digits in equal cells without padding decimal punctuation", () => {
+    const widths = (glyph: string) =>
+      glyph === "1" ? 4 : glyph === "." || glyph === "-" ? 3 : 8;
+    const cells = answerGlyphs("-11.8", widths);
+    expect(cells.map(({ x }) => x)).toEqual([0, 3, 11, 19, 22]);
+    expect(cells.map(({ advance }) => advance)).toEqual([3, 8, 8, 3, 8]);
+    expect(cells[1].offset).toBe(2);
+    expect(cells[4].offset).toBe(0);
+    const width = (text: string) =>
+      answerGlyphs(text, widths).reduce((sum, cell) => sum + cell.advance, 0);
+    expect(width("111.11")).toBe(width("888.88"));
+  });
+  it("anchors beside the actual ink bounds and shrinks only down to 16", () => {
     const layout = answerLayout(result, (_, size) => size * 20);
-    expect(layout).toEqual({ text: "Undefined", x: 612, y: 264, fontSize: 16 });
+    expect(layout).toEqual({ text: "Undefined", x: 612, y: 223, fontSize: 16 });
     expect(answerLayout(result, (_, size) => size * 22)).toBeNull();
     expect(resultStatus(result, false)).toBe("Leave room after =");
     expect(
@@ -31,6 +47,27 @@ describe("result placement and swept geometry", () => {
     expect(
       answerLayout({ ...result, outcome: { kind: "incomplete" } }, () => 1),
     ).toBeNull();
+  });
+  it("matches the handwriting height and centers actual font ink beside it", () => {
+    const response = {
+      ...result,
+      outcome: { kind: "answer" as const, value: "5" },
+    };
+    const layout = answerLayout(
+      response,
+      (_, size) => size / 2,
+      (_, size) => ({ ascent: size * 0.6, descent: size * 0.15 }),
+    );
+    expect(layout).toEqual({ text: "5", x: 612, y: 224, fontSize: 40 });
+    const tall = answerLayout(
+      {
+        ...response,
+        visibleInkBounds: { x: 100, y: 200, width: 500, height: 60 },
+      },
+      (_, size) => size / 2,
+      (_, size) => ({ ascent: size * 0.6, descent: size * 0.15 }),
+    );
+    expect(tall?.fontSize).toBe(80);
   });
   it("distinguishes crossed, tangent, parallel and degenerate segments", () => {
     const xy = (x: number, y: number) => ({ x, y });

@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { PAGE } from "../../src/document/rows";
 
 test("narrow layouts retain readable text, 44px controls and visible keyboard focus", async ({
   page,
@@ -76,6 +77,9 @@ test("narrow layouts retain readable text, 44px controls and visible keyboard fo
   await page.getByRole("link", { name: "CalcInk home" }).focus();
   await page.keyboard.press("Tab");
   const pen = page.getByRole("button", { name: "Pen", exact: true });
+  await pen.focus();
+  await page.keyboard.press("Shift+Tab");
+  await page.keyboard.press("Tab");
   await expect(pen).toBeFocused();
   expect(
     await pen.evaluate((element) => {
@@ -95,7 +99,7 @@ test("narrow layouts retain readable text, 44px controls and visible keyboard fo
   });
   await expect(
     page.getByRole("button", { name: "Clear", exact: true }),
-  ).toHaveAttribute("title", "Clear all rows (undoable)");
+  ).toHaveAttribute("title", "Clear this page (undoable)");
 });
 
 test("live DPR changes cancel provisional erasing, replay ink and preserve history shortcuts", async ({
@@ -113,10 +117,13 @@ test("live DPR changes cancel provisional erasing, replay ink and preserve histo
   });
   await page.goto("/");
   const canvas = page.locator('[data-layer="live"]');
-  await canvas.scrollIntoViewIfNeeded();
+  await page.locator(".row-guide").first().scrollIntoViewIfNeeded();
   const box = await canvas.boundingBox();
   if (!box) throw new Error("Missing canvas");
-  const point = { x: box.x + box.width * 0.2, y: box.y + box.height * 0.08 };
+  const point = {
+    x: box.x + box.width * 0.2,
+    y: box.y + box.height * (38.4 / PAGE.height),
+  };
   const ink = () =>
     page
       .locator('[data-layer="ink"]')

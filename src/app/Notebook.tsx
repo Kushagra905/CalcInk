@@ -1,9 +1,10 @@
-import { useEffect, useRef } from "react";
-import { getRowConfig, PAGE, ROWS } from "../document/rows";
+import { useEffect, useRef, useState } from "react";
+import { PAGE, ROWS, RULE_SPACING } from "../document/rows";
 import type { DocumentStore } from "../document/store";
 import type { EraseMask, InkOperation, Point } from "../document/types";
 import { hitVisibleStroke, type InkTool, maskTouchesInk } from "../ink/eraser";
 import { clientToPage, strokeBounds } from "../ink/geometry";
+import { groupBounds, writingGroup } from "../ink/groups";
 import { drawPath } from "../ink/replay";
 import type { RecognitionResponse } from "../recognition/protocol";
 import { replayRow } from "../rendering/replay";
@@ -22,6 +23,11 @@ export function Notebook({
   eraserRadius,
   feedback,
   onError,
+  title,
+  onTitleChange,
+  pageNumber,
+  pan,
+  disabled,
 }: {
   document: DocumentStore;
   width: number;
@@ -29,14 +35,34 @@ export function Notebook({
   eraserRadius: number;
   feedback: Record<string, RowFeedback>;
   onError(message: string): void;
+  title: string;
+  onTitleChange(title: string): void;
+  pageNumber: number;
+  pan: boolean;
+  disabled: boolean;
 }) {
   const ink = useRef<HTMLCanvasElement>(null);
   const live = useRef<HTMLCanvasElement>(null);
   const results = useRef<HTMLCanvasElement>(null);
-  const settings = useRef({ width, tool, eraserRadius });
-  settings.current = { width, tool, eraserRadius };
+  const settings = useRef({ width, tool, eraserRadius, pan, disabled });
+  settings.current = { width, tool, eraserRadius, pan, disabled };
+  const [activeLine, setActiveLine] = useState<number | null>(null);
+  const [fontReady, setFontReady] = useState(false);
   const currentFeedback = useRef(feedback);
   currentFeedback.current = feedback;
+
+  useEffect(() => {
+    let disposed = false;
+    void window.document.fonts
+      .load('400 32px "Inter"')
+      .then(() => {
+        if (!disposed) setFontReady(true);
+      })
+      .catch(() => {});
+    return () => {
+      disposed = true;
+    };
+  }, []);
 
   function accepted(rowId: string, state: RowFeedback) {
     const result = state.result;
@@ -48,20 +74,21 @@ export function Notebook({
   }
 
   useEffect(() => {
+    if (!fontReady) return;
     const canvas = results.current;
     const context = canvas?.getContext("2d");
     if (!canvas || !context) return;
     context.clearRect(0, 0, PAGE.width, PAGE.height);
-    for (const row of ROWS) {
-      const result = feedback[row.id].result;
+    for (const row of document.getRows()) {
+      const result = feedback[row.rowId]?.result;
       if (
         result &&
         result.epoch === document.getEpoch() &&
-        result.rowRevision === document.getRow(row.id).rowRevision
+        result.rowRevision === row.rowRevision
       )
         drawAnswer(context, result);
     }
-  }, [feedback, document]);
+  }, [feedback, document, fontReady]);
 
   useEffect(() => {
     if (!ink.current || !live.current || !results.current) return;
@@ -97,17 +124,29 @@ export function Notebook({
       painted: number;
       tool: InkTool;
       radius: number;
-      remaining: readonly InkOperation[];
+      remaining: Map<string, readonly InkOperation[]>;
       processed: number;
     } | null = null;
     let frame = 0;
+    let moving: {
+      pointerId: number;
+      x: number;
+      y: number;
+      scrollX: number;
+      scrollY: number;
+    } | null = null;
+    const viewport = input.closest<HTMLElement>(".sheet-viewport");
 
-    function repaint(rowIds: readonly string[] = ROWS.map((row) => row.id)) {
-      for (const rowId of rowIds) {
-        const row = getRowConfig(rowId);
-        committed.clearRect(0, row.top, PAGE.width, row.height);
-        replayRow(committed, rowId, document.getRow(rowId).operations);
-      }
+    function repaint() {
+      committed.clearRect(0, 0, PAGE.width, PAGE.height);
+      for (const row of document.getRows())
+        replayRow(
+          committed,
+          row.rowId,
+          gesture?.tool === "erase-stroke"
+            ? (gesture.remaining.get(row.rowId) ?? row.operations)
+            : row.operations,
+        );
     }
 
     function stopPreview() {
@@ -118,6 +157,11 @@ export function Notebook({
     }
 
     function cancel() {
+      if (moving) {
+        const id = moving.pointerId;
+        moving = null;
+        if (input.hasPointerCapture(id)) input.releasePointerCapture(id);
+      }
       if (!gesture) return;
       const pointerId = gesture.pointerId;
       gesture = null;
@@ -154,27 +198,26 @@ export function Notebook({
         0,
       );
       repaint();
-      for (const row of ROWS) {
-        const result = currentFeedback.current[row.id].result;
+      for (const row of document.getRows()) {
+        const result = currentFeedback.current[row.rowId]?.result;
         if (
           result &&
           result.epoch === document.getEpoch() &&
-          result.rowRevision === document.getRow(row.id).rowRevision
+          result.rowRevision === row.rowRevision
         )
           drawAnswer(output, result);
       }
     }
 
-    function point(event: PointerEvent, rowId: string): Point {
+    function point(event: PointerEvent): Point {
       const position = clientToPage(
         event.clientX,
         event.clientY,
         input.getBoundingClientRect(),
       );
-      const row = getRowConfig(rowId);
       return {
         x: Math.max(0, Math.min(PAGE.width, position.x)),
-        y: Math.max(row.top, Math.min(row.top + row.writingHeight, position.y)),
+        y: Math.max(0, Math.min(PAGE.height, position.y)),
         pressure: event.pressure,
         t: event.timeStamp,
       };
@@ -183,29 +226,30 @@ export function Notebook({
     function paintLive() {
       frame = 0;
       if (!gesture) return;
-      const row = getRowConfig(gesture.rowId);
       if (gesture.tool !== "draw") {
         if (gesture.tool === "erase-stroke") {
-          // ponytail: scan the capped row (≤1,000 operations); add a spatial index if Phase 6 profiling shows missed frames.
+          // The page caps all groups together at 1,000 operations.
           for (let i = gesture.processed; i < gesture.points.length; i++) {
             const from = gesture.points[Math.max(0, i - 1)],
               to = gesture.points[i];
-            const operations = gesture.remaining;
             const radius = gesture.radius;
-            gesture.remaining = operations.filter(
-              (operation, index) =>
-                operation.kind !== "stroke" ||
-                !hitVisibleStroke(hit, operations, index, from, to, radius),
-            );
+            for (const [id, operations] of gesture.remaining)
+              gesture.remaining.set(
+                id,
+                operations.filter(
+                  (operation, index) =>
+                    operation.kind !== "stroke" ||
+                    !hitVisibleStroke(hit, operations, index, from, to, radius),
+                ),
+              );
           }
           gesture.processed = gesture.points.length;
-          committed.clearRect(0, row.top, PAGE.width, row.height);
-          replayRow(committed, row.id, gesture.remaining);
+          repaint();
         } else {
-          committed.clearRect(0, row.top, PAGE.width, row.height);
+          committed.clearRect(0, 0, PAGE.width, PAGE.height);
           committed.save();
           committed.beginPath();
-          committed.rect(0, row.top, PAGE.width, row.writingHeight);
+          committed.rect(0, 0, PAGE.width, PAGE.height);
           committed.clip();
           committed.drawImage(stable, 0, 0, PAGE.width, PAGE.height);
           committed.globalCompositeOperation = "destination-out";
@@ -216,7 +260,7 @@ export function Notebook({
         const last = gesture.points[gesture.points.length - 1];
         preview.save();
         preview.beginPath();
-        preview.rect(0, row.top, PAGE.width, row.writingHeight);
+        preview.rect(0, 0, PAGE.width, PAGE.height);
         preview.clip();
         preview.beginPath();
         preview.arc(last.x, last.y, gesture.radius, 0, Math.PI * 2);
@@ -226,7 +270,7 @@ export function Notebook({
         preview.restore();
         return;
       }
-      stableContext.fillStyle = stableContext.strokeStyle = "#111827";
+      stableContext.fillStyle = stableContext.strokeStyle = "#30352f";
       if (gesture.painted < gesture.points.length - 1) {
         drawPath(
           stableContext,
@@ -237,30 +281,51 @@ export function Notebook({
         );
         gesture.painted = Math.max(1, gesture.points.length - 1);
       }
-      preview.clearRect(0, row.top, PAGE.width, row.height);
+      preview.clearRect(0, 0, PAGE.width, PAGE.height);
       preview.save();
       preview.beginPath();
-      preview.rect(0, row.top, PAGE.width, row.writingHeight);
+      preview.rect(0, 0, PAGE.width, PAGE.height);
       preview.clip();
       preview.drawImage(stable, 0, 0, PAGE.width, PAGE.height);
-      preview.fillStyle = preview.strokeStyle = "#111827";
+      preview.fillStyle = preview.strokeStyle = "#30352f";
       drawPath(preview, gesture.points, gesture.width, gesture.painted);
       preview.restore();
     }
 
     function down(event: PointerEvent) {
+      if (settings.current.disabled) return;
+      if (settings.current.pan) {
+        if (
+          event.isPrimary &&
+          event.button === 0 &&
+          event.pointerType !== "touch" &&
+          viewport
+        ) {
+          event.preventDefault();
+          moving = {
+            pointerId: event.pointerId,
+            x: event.clientX,
+            y: event.clientY,
+            scrollX: viewport.scrollLeft,
+            scrollY: window.scrollY,
+          };
+          input.setPointerCapture(event.pointerId);
+        }
+        return;
+      }
       if (gesture || !event.isPrimary || event.button !== 0) return;
       const position = clientToPage(
         event.clientX,
         event.clientY,
         input.getBoundingClientRect(),
       );
-      const row = ROWS.find(
-        (candidate) =>
-          position.y >= candidate.top &&
-          position.y < candidate.top + candidate.writingHeight,
-      );
-      if (!row) return;
+      if (
+        position.x < 0 ||
+        position.x > PAGE.width ||
+        position.y < 0 ||
+        position.y > PAGE.height
+      )
+        return;
       onError("");
       try {
         const selected = settings.current;
@@ -271,16 +336,31 @@ export function Notebook({
           throw new Error(
             "Page capacity reached. Use stroke erasing, Clear or Undo to make room.",
           );
-        document.begin(row.id, selected.tool);
+        const rowId =
+          selected.tool === "draw"
+            ? writingGroup(document.getRows(), position)
+            : "row-1";
+        const touched =
+          selected.tool === "draw"
+            ? [rowId]
+            : document
+                .getRows()
+                .filter((row) => row.operations.length)
+                .map((row) => row.rowId);
+        if (!touched.length) return;
+        document.begin(touched, selected.tool);
+        setActiveLine(Math.floor(position.y / RULE_SPACING) * RULE_SPACING);
         gesture = {
           pointerId: event.pointerId,
-          rowId: row.id,
+          rowId,
           width: selected.width,
-          points: [point(event, row.id)],
+          points: [point(event)],
           painted: 1,
           tool: selected.tool,
           radius: selected.eraserRadius,
-          remaining: document.getRow(row.id).operations,
+          remaining: new Map(
+            touched.map((id) => [id, document.getRow(id).operations]),
+          ),
           processed: 0,
         };
         if (selected.tool === "erase-pixel")
@@ -297,10 +377,18 @@ export function Notebook({
     }
 
     function sample(event: PointerEvent) {
+      if (moving?.pointerId === event.pointerId && viewport) {
+        viewport.scrollLeft = moving.scrollX + moving.x - event.clientX;
+        window.scrollTo({
+          top: moving.scrollY + moving.y - event.clientY,
+          behavior: "instant",
+        });
+        return;
+      }
       if (!gesture || event.pointerId !== gesture.pointerId) return;
       const events = event.getCoalescedEvents?.() ?? [];
       for (const sample of events.length ? events : [event]) {
-        const next = point(sample, gesture.rowId);
+        const next = point(sample);
         const previous = gesture.points[gesture.points.length - 1];
         if (next.x !== previous.x || next.y !== previous.y)
           gesture.points.push(next);
@@ -314,6 +402,10 @@ export function Notebook({
     }
 
     function up(event: PointerEvent) {
+      if (moving?.pointerId === event.pointerId) {
+        cancel();
+        return;
+      }
       if (!gesture || gesture.pointerId !== event.pointerId) return;
       sample(event);
       if (!gesture) return;
@@ -327,20 +419,24 @@ export function Notebook({
       stopPreview();
       try {
         if (finished.tool === "erase-stroke")
-          document.commit(finished.remaining);
+          document.commitRows(finished.remaining);
         else if (finished.tool === "erase-pixel") {
-          const mask: EraseMask = {
-            id: crypto.randomUUID(),
-            rowId: finished.rowId,
-            radius: finished.radius,
-            points: finished.points,
-          };
-          const operations = document.getRow(finished.rowId).operations;
-          document.commit(
-            maskTouchesInk(hit, operations, mask)
-              ? [...operations, { kind: "pixel-mask", mask }]
-              : operations,
-          );
+          const updates = new Map<string, readonly InkOperation[]>();
+          for (const [rowId, operations] of finished.remaining) {
+            const mask: EraseMask = {
+              id: crypto.randomUUID(),
+              rowId,
+              radius: finished.radius,
+              points: finished.points,
+            };
+            updates.set(
+              rowId,
+              maskTouchesInk(hit, operations, mask)
+                ? [...operations, { kind: "pixel-mask", mask }]
+                : operations,
+            );
+          }
+          document.commitRows(updates);
         } else
           document.commit([
             ...document.getRow(finished.rowId).operations,
@@ -370,20 +466,33 @@ export function Notebook({
     }
 
     function lost(event: PointerEvent) {
-      if (gesture?.pointerId === event.pointerId) cancel();
+      if (
+        gesture?.pointerId === event.pointerId ||
+        moving?.pointerId === event.pointerId
+      )
+        cancel();
     }
     let outputEpoch = document.getEpoch();
     const unsubscribe = document.subscribe((event) => {
+      if (event.reason === "clear") setActiveLine(null);
       if (event.epoch !== outputEpoch) {
         outputEpoch = event.epoch;
         output.clearRect(0, 0, PAGE.width, PAGE.height);
       }
-      for (const changed of event.rows) {
-        const row = getRowConfig(changed.rowId);
-        output.clearRect(0, row.top, PAGE.width, row.height);
+      output.clearRect(0, 0, PAGE.width, PAGE.height);
+      const changedIds = new Set(event.rows.map((row) => row.rowId));
+      for (const row of document.getRows()) {
+        if (changedIds.has(row.rowId)) continue;
+        const result = currentFeedback.current[row.rowId]?.result;
+        if (
+          result &&
+          result.epoch === document.getEpoch() &&
+          result.rowRevision === row.rowRevision
+        )
+          drawAnswer(output, result);
       }
       if (event.phase === "cancel" || event.reason === "clear") cancel();
-      if (event.phase !== "begin") repaint(event.rows.map((row) => row.rowId));
+      if (event.phase !== "begin") repaint();
     });
     const observer = new ResizeObserver(resize);
     observer.observe(input);
@@ -421,20 +530,52 @@ export function Notebook({
 
   return (
     <div className="notebook" id="handwriting-notebook">
-      <div className="paper">
+      <header className="paper-heading">
+        <div>
+          <label className="page-title-label" htmlFor="notebook-page-title">
+            MY MATH NOTEBOOK
+          </label>
+          <input
+            id="notebook-page-title"
+            className="page-title-input"
+            aria-label="Page title"
+            value={title}
+            maxLength={64}
+            placeholder="Untitled page"
+            disabled={disabled}
+            onChange={(event) => onTitleChange(event.target.value)}
+          />
+        </div>
+        <span className="paper-page-number">
+          {String(pageNumber).padStart(2, "0")}
+        </span>
+      </header>
+      <div
+        className="paper"
+        style={{ aspectRatio: `${PAGE.width} / ${PAGE.height}` }}
+      >
         <div className="margin-line" />
-        {ROWS.map((row, index) => (
+        <div className="paper-rules" aria-hidden="true" />
+        {activeLine !== null && (
+          <div
+            className="active-writing-line"
+            aria-hidden="true"
+            style={{
+              top: `${(activeLine / PAGE.height) * 100}%`,
+              height: `${(RULE_SPACING / PAGE.height) * 100}%`,
+            }}
+          />
+        )}
+        {ROWS.map((row) => (
           <div
             className="row-guide"
+            aria-hidden="true"
             key={row.id}
             style={{
               top: `${(row.top / PAGE.height) * 100}%`,
-              height: `${(row.height / PAGE.height) * 100}%`,
+              height: "1px",
             }}
-          >
-            <span className="row-number">0{index + 1}</span>
-            <div className="baseline" />
-          </div>
+          />
         ))}
         <canvas
           ref={ink}
@@ -446,8 +587,9 @@ export function Notebook({
         <canvas
           ref={live}
           data-layer="live"
-          className="canvas-layer input-layer"
-          aria-label="Handwriting canvas, three equation rows"
+          className={`canvas-layer input-layer${pan ? " pan-layer" : ""}`}
+          aria-label="Handwriting canvas, continuous notebook page"
+          aria-disabled={disabled}
           aria-describedby="writing-help"
           tabIndex={0}
         />
@@ -458,53 +600,65 @@ export function Notebook({
           aria-hidden="true"
           tabIndex={-1}
         />
+        <ol
+          className="row-feedbacks"
+          aria-live="polite"
+          aria-label="Equation transcripts"
+        >
+          {document.getRows().map((row, index) => {
+            const state = feedback[row.rowId] ?? {
+              kind: "idle",
+              transcript: "",
+            };
+            const result = accepted(row.rowId, state);
+            const bounds = groupBounds(row);
+            const context = results.current?.getContext("2d");
+            const status = result
+              ? resultStatus(
+                  result,
+                  !!context && !!measureAnswer(context, result),
+                )
+              : "";
+            return (
+              <li
+                key={row.rowId}
+                data-row={row.rowId}
+                className={`row-feedback ${state.kind}`}
+                style={{
+                  top: `${(Math.max(0, (bounds?.y ?? 0) - 24) / PAGE.height) * 100}%`,
+                  left: `${((bounds?.x ?? 44) / PAGE.width) * 100}%`,
+                }}
+              >
+                <span className="feedback-row">Expression {index + 1}</span>
+                <span>
+                  {state.kind === "idle" ? (
+                    "Write an expression"
+                  ) : state.kind === "recognizing" ? (
+                    "Recognizing…"
+                  ) : result ? (
+                    <>
+                      <span className="row-state">{status}</span>
+                      {result.transcript && (
+                        <span className="row-transcript">
+                          {(result.normalizedTranscript ?? result.transcript)
+                            .replaceAll("*", "×")
+                            .replaceAll("/", "÷")}
+                        </span>
+                      )}
+                    </>
+                  ) : (
+                    state.transcript
+                  )}
+                </span>
+              </li>
+            );
+          })}
+        </ol>
       </div>
-      <ol
-        className="row-feedbacks"
-        aria-live="polite"
-        aria-label="Equation transcripts"
-      >
-        {ROWS.map((row, index) => {
-          const state = feedback[row.id];
-          const result = accepted(row.id, state);
-          const context = results.current?.getContext("2d");
-          const status = result
-            ? resultStatus(
-                result,
-                !!context && !!measureAnswer(context, result),
-              )
-            : "";
-          return (
-            <li
-              key={row.id}
-              data-row={row.id}
-              className={`row-feedback ${state.kind}`}
-            >
-              <span className="feedback-row">Row {index + 1}</span>
-              <span>
-                {state.kind === "idle" ? (
-                  "Write an expression"
-                ) : state.kind === "recognizing" ? (
-                  "Recognizing…"
-                ) : result ? (
-                  <>
-                    <span className="row-state">{status}</span>
-                    {result.transcript && (
-                      <span className="row-transcript">
-                        {(result.normalizedTranscript ?? result.transcript)
-                          .replaceAll("*", "×")
-                          .replaceAll("/", "÷")}
-                      </span>
-                    )}
-                  </>
-                ) : (
-                  state.transcript
-                )}
-              </span>
-            </li>
-          );
-        })}
-      </ol>
+      <footer className="paper-footer">
+        <span>Ink first. Answers alongside.</span>
+        <span>PAGE {String(pageNumber).padStart(2, "0")}</span>
+      </footer>
     </div>
   );
 }

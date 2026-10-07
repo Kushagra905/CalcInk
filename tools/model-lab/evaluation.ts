@@ -149,7 +149,7 @@ export function distribution(values: readonly number[]) {
 }
 
 function canonical(text: string): string | null {
-  const normalized = normalizeExpression(text);
+  const normalized = normalizeExpression(text, { preserveRepeatedEquals: true });
   return normalized.ok ? normalized.transcript : null;
 }
 function outcomeEqual(a: CalculationOutcome, b: CalculationOutcome): boolean {

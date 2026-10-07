@@ -9,19 +9,30 @@ See the [single release checklist](docs/release-checklist.md) for A, B and joint
 
 ## Using the notebook
 
-1. Wait for **Model ready**. Write one horizontal expression per row, finish with
+1. Wait for **Model ready**. Write anywhere on the continuous page. Keep each
+   calculation on its own line, finish with
    `=` and leave space for the answer. Required symbols are `0-9`, `+`, `−`, `×`,
    `÷`, `.`, and `=`. Parser support for parentheses is not a measured handwriting claim.
 2. **Pen** draws; Width affects future gestures. **Stroke eraser** removes a whole
    visible stroke; **Pixel eraser** removes only the swept region. Eraser size is its diameter.
-3. **Undo**, **Redo** and **Clear** work across rows; Clear can be undone. Keyboard:
+3. **Undo**, **Redo** and **Clear** work across the active page's rows; each page
+   keeps its own history during this session. Clear can be undone. Keyboard:
    Ctrl/Cmd+Z, Ctrl/Cmd+Shift+Z, or Ctrl+Y outside text fields.
 4. Editing clears the old answer immediately. A completed edit schedules recognition
    after 350 ms. Incomplete/invalid/unreadable input shows feedback; division by zero
    gives `Undefined`. Leave room after equals if the answer cannot fit.
-5. Prepare online until **Ready offline**, then disconnect. Reload clears unsaved
-   tab ink/history; offline reload starts a fresh notebook using cached assets.
+5. Prepare online until **Ready offline**, then disconnect. Completed edits and
+   page titles save locally when the header says **Saved on this device**. Reload
+   restores saved ink and recomputes answers; undo history starts fresh.
    Failed preparation/recognition offers retry while preserving current ink.
+6. Add up to 12 pages using the navigator. **Focus** expands the writing space;
+   zoom and **Move** help navigate the page. **More** exports the active page as
+   PNG, backs up the whole notebook as JSON, and restores validated JSON backups.
+   Save regularly before clearing browser data. A second tab uses session-only
+   editing to protect the first tab's saved notebook.
+
+The [notebook redesign](docs/notebook-redesign.md) documents the continuous ruled paper,
+Georgia Italic/locally bundled Inter typography, persistence and verification.
 
 Desktop Chromium and Edge have automated checks. Physical mouse/touch/stylus and
 other browsers/devices need their own recorded acceptance. There is no cloud inference.
@@ -73,7 +84,8 @@ debounce, result acceptance and arithmetic in the real path.
 For one-off contract tests, reset the fixtures, draw on a row, enter the writer and expected text/value,
 and export JSON. These files are labeled `contract` and stay out of handwriting evaluation.
 Synthetic or mixed ink is identified explicitly. Use the Phase 1 guided collection for genuine samples.
-Reloading or resetting clears unsaved ink in this tab.
+Resetting clears fixture ink. Normal notebook edits now autosave separately from
+guided capture records; held-out capture ink stays out of ordinary autosave.
 
 Mock failure cases: `/?mock=init-error`, `/?mock=error`, and `/?mock=out-of-order`.
 Initialization and recognition failures offer **Retry recognition** while retaining ink.
@@ -94,7 +106,7 @@ in-progress save are preserved. Synthetic/mixed ink and reuse of the same ink fo
 sample are rejected. Selecting a saved prompt explicitly replaces that record.
 
 Saved strokes persist in IndexedDB on this browser profile and origin (including the port).
-Unsaved canvas ink still disappears on reload. Export each set regularly as a JSON backup;
+Held-out canvas ink remains session-only. Export each capture set regularly as a JSON backup;
 clearing browser data deletes its saved records. Each export contains one dataset, actual
 records, its target count, and an explicit completion flag. Partial exports are supported.
 Use consistent writer slots across devices; totals shown are for this browser, not a global count.
@@ -258,8 +270,9 @@ Missing/corrupted entries and storage quota failures revoke cache readiness. Rec
 retries preparation. Model attribution and Apache-2.0 license are included in the deployment.
 
 Updates wait for explicit activation. Reload is disabled while a gesture or committed ink
-is present, and other CalcInk tabs must close before applying an update. Reload still clears
-tab ink/history; save any wanted captures first. Old caches retire after activation.
+is present on any page, and other CalcInk tabs must close before applying an update.
+Notebook ink restores from local saving; session undo history starts fresh. Export
+any wanted captures before updating. Old caches retire after activation.
 
 After `build:pages`, run `npm run test:offline` for fresh-profile production checks under
 the repository base path. See [Phase 5 implementation and acceptance](docs/phase-5.md).

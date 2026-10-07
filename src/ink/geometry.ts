@@ -59,11 +59,11 @@ export function strokeBounds(
     start = end;
   }
   include(points[points.length - 1]);
-  const row = getRowConfig(rowId);
+  getRowConfig(rowId);
   left = Math.max(0, left - width / 2);
   right = Math.min(PAGE.width, right + width / 2);
-  top = Math.max(row.top, top - width / 2);
-  bottom = Math.min(row.top + row.writingHeight, bottom + width / 2);
+  top = Math.max(0, top - width / 2);
+  bottom = Math.min(PAGE.height, bottom + width / 2);
   return { x: left, y: top, width: right - left, height: bottom - top };
 }
 

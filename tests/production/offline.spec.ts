@@ -1,6 +1,7 @@
 import { spawnSync } from "node:child_process";
 import { readFile, writeFile } from "node:fs/promises";
 import { expect, type Page, test } from "@playwright/test";
+import { PAGE } from "../../src/document/rows";
 import type { RecognitionResponse } from "../../src/recognition/protocol";
 
 declare global {
@@ -34,13 +35,13 @@ async function ready(page: Page) {
 }
 async function stroke(page: Page, points: [number, number][]) {
   const canvas = page.locator('[data-layer="live"]');
-  await canvas.scrollIntoViewIfNeeded();
+  await page.locator(".row-guide").first().scrollIntoViewIfNeeded();
   const box = await canvas.boundingBox();
   if (!box) throw new Error("Missing canvas");
   const move = async ([x, y]: [number, number]) =>
     page.mouse.move(
       box.x + (x / 960) * box.width,
-      box.y + (y / 480) * box.height,
+      box.y + (y / PAGE.height) * box.height,
     );
   await move(points[0]);
   await page.mouse.down();
@@ -134,6 +135,8 @@ test("production caches real ink-on under a base path and infers after offline r
   expect(result?.transcript.length).toBeGreaterThan(0);
   expect(result?.timing.inferenceMs).toBeGreaterThan(0);
   expect(result?.transcript).not.toBe("18+4*3=");
+  expect(result?.normalizedTranscript).toBe("1=");
+  expect(result?.outcome).toEqual({ kind: "answer", value: "1" });
   await page.getByRole("button", { name: "Clear", exact: true }).click();
   await stroke(page, [
     [130, 42],
@@ -161,9 +164,12 @@ test("production caches real ink-on under a base path and infers after offline r
       { timeout: 15_000 },
     )
     .not.toBe(result?.transcript);
+  const second = await page.evaluate(() => window.calcinkTestResults.at(-1));
+  expect(second?.normalizedTranscript).toBe("4=");
+  expect(second?.outcome).toEqual({ kind: "answer", value: "4" });
   console.log(
     "Actual second offline synthetic inference:",
-    JSON.stringify(await page.evaluate(() => window.calcinkTestResults.at(-1))),
+    JSON.stringify(second),
   );
   expect(external).toEqual([]);
 });

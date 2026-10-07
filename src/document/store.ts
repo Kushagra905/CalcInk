@@ -1,4 +1,5 @@
-import { getRowConfig, PAGE, ROWS } from "./rows";
+import { strokeBounds } from "../ink/geometry";
+import { GROUPS, getRowConfig, PAGE } from "./rows";
 import type {
   DocumentEditEvent,
   HistoryCommand,
@@ -9,17 +10,24 @@ import type {
 const EMPTY = Object.freeze([]) as readonly InkOperation[];
 
 function freezeOperation(operation: InkOperation, rowId: string): InkOperation {
+  if (
+    !operation ||
+    (operation.kind !== "stroke" && operation.kind !== "pixel-mask")
+  )
+    throw new RangeError("Invalid ink operation");
   const ink = operation.kind === "stroke" ? operation.stroke : operation.mask;
   const size =
     operation.kind === "stroke"
       ? operation.stroke.width
       : operation.mask.radius;
-  const row = getRowConfig(rowId);
+  getRowConfig(rowId);
   if (
+    typeof ink.id !== "string" ||
     !ink.id ||
     ink.rowId !== rowId ||
     !Number.isFinite(size) ||
     size <= 0 ||
+    !Array.isArray(ink.points) ||
     !ink.points.length
   ) {
     throw new RangeError("Invalid ink operation");
@@ -30,8 +38,8 @@ function freezeOperation(operation: InkOperation, rowId: string): InkOperation {
         ![point.x, point.y, point.pressure, point.t].every(Number.isFinite) ||
         point.x < 0 ||
         point.x > PAGE.width ||
-        point.y < row.top ||
-        point.y > row.top + row.writingHeight ||
+        point.y < 0 ||
+        point.y > PAGE.height ||
         point.pressure < 0 ||
         point.pressure > 1 ||
         point.t < 0
@@ -57,7 +65,7 @@ function freezeOperation(operation: InkOperation, rowId: string): InkOperation {
       stroke: Object.freeze({
         ...operation.stroke,
         points,
-        bounds: Object.freeze({ ...bounds }),
+        bounds: Object.freeze(strokeBounds(points, size, rowId)),
       }),
     });
   }
@@ -67,21 +75,50 @@ function freezeOperation(operation: InkOperation, rowId: string): InkOperation {
   });
 }
 
-export function createDocumentStore() {
+export function createDocumentStore(initialRows: readonly RowSnapshot[] = []) {
   let epoch = 0;
   const rows = new Map<string, RowSnapshot>(
-    ROWS.map((row) => [
+    GROUPS.map((row) => [
       row.id,
       Object.freeze({ rowId: row.id, rowRevision: 0, operations: EMPTY }),
     ]),
   );
   const listeners = new Set<(event: DocumentEditEvent) => void>();
   let gesture: {
-    rowId: string;
+    rowIds: readonly string[];
     reason: "draw" | "erase-stroke" | "erase-pixel";
   } | null = null;
   const past: HistoryCommand[] = [];
   const future: HistoryCommand[] = [];
+
+  // Validate restored ink using the same boundary as a live edit. History starts fresh.
+  const restored = new Set<string>();
+  const ids = new Set<string>();
+  let operationCount = 0;
+  let pointCount = 0;
+  for (const snapshot of initialRows) {
+    getRowConfig(snapshot.rowId);
+    if (restored.has(snapshot.rowId))
+      throw new RangeError("Duplicate saved row");
+    restored.add(snapshot.rowId);
+    const operations = Object.freeze(
+      snapshot.operations.map((operation) => {
+        const frozen = freezeOperation(operation, snapshot.rowId);
+        const ink = frozen.kind === "stroke" ? frozen.stroke : frozen.mask;
+        if (ids.has(ink.id)) throw new RangeError("Duplicate ink ID");
+        ids.add(ink.id);
+        operationCount++;
+        pointCount += ink.points.length;
+        return frozen;
+      }),
+    );
+    rows.set(
+      snapshot.rowId,
+      Object.freeze({ rowId: snapshot.rowId, rowRevision: 1, operations }),
+    );
+  }
+  if (operationCount > 1000 || pointCount > 200000)
+    throw new RangeError("Page capacity reached");
 
   function remember(command: HistoryCommand) {
     if (!command.changes.length) return;
@@ -131,9 +168,9 @@ export function createDocumentStore() {
   return {
     getEpoch: () => epoch,
     getRow,
-    getRows: () => Object.freeze(ROWS.map((row) => getRow(row.id))),
+    getRows: () => Object.freeze(GROUPS.map((row) => getRow(row.id))),
     getCapacityState: () => {
-      const operations = ROWS.flatMap((row) => getRow(row.id).operations);
+      const operations = GROUPS.flatMap((row) => getRow(row.id).operations);
       const points = operations.reduce(
         (count, operation) =>
           count +
@@ -152,7 +189,7 @@ export function createDocumentStore() {
       canUndo: past.length > 0,
       canRedo: future.length > 0,
       canClear:
-        !!gesture || ROWS.some((row) => getRow(row.id).operations.length > 0),
+        !!gesture || GROUPS.some((row) => getRow(row.id).operations.length > 0),
     }),
     subscribe(listener: (event: DocumentEditEvent) => void) {
       listeners.add(listener);
@@ -161,28 +198,44 @@ export function createDocumentStore() {
       };
     },
     begin(
-      rowId: string,
+      rowId: string | readonly string[],
       reason: "draw" | "erase-stroke" | "erase-pixel" = "draw",
     ) {
       if (gesture) throw new Error("A gesture is already active");
-      getRow(rowId);
-      gesture = { rowId, reason };
-      advance(rowId);
-      emit("begin", reason, [rowId]);
+      const rowIds = typeof rowId === "string" ? [rowId] : [...new Set(rowId)];
+      if (!rowIds.length) throw new RangeError("A gesture needs an ink group");
+      for (const id of rowIds) getRow(id);
+      gesture = { rowIds, reason };
+      for (const id of rowIds) advance(id);
+      emit("begin", reason, rowIds);
     },
     commit(operations: readonly InkOperation[]) {
       if (!gesture) throw new Error("No active gesture");
-      const { rowId, reason } = gesture;
-      const frozen = Object.freeze(
-        operations.map((operation) =>
-          Object.isFrozen(operation) &&
-          getRow(rowId).operations.includes(operation)
-            ? operation
-            : freezeOperation(operation, rowId),
-        ),
+      if (gesture.rowIds.length !== 1)
+        throw new Error("Use a page-wide commit for this gesture");
+      this.commitRows(new Map([[gesture.rowIds[0], operations]]));
+    },
+    commitRows(updates: ReadonlyMap<string, readonly InkOperation[]>) {
+      if (!gesture) throw new Error("No active gesture");
+      const { rowIds, reason } = gesture;
+      for (const id of updates.keys())
+        if (!rowIds.includes(id))
+          throw new RangeError("Ink group is outside the gesture");
+      const replacements = new Map(
+        rowIds.map((rowId) => [
+          rowId,
+          Object.freeze(
+            (updates.get(rowId) ?? getRow(rowId).operations).map((operation) =>
+              Object.isFrozen(operation) &&
+              getRow(rowId).operations.includes(operation)
+                ? operation
+                : freezeOperation(operation, rowId),
+            ),
+          ),
+        ]),
       );
-      const all = ROWS.flatMap((row) =>
-        row.id === rowId ? frozen : getRow(row.id).operations,
+      const all = GROUPS.flatMap(
+        (row) => replacements.get(row.id) ?? getRow(row.id).operations,
       );
       const ids = all.map((operation) =>
         operation.kind === "stroke" ? operation.stroke.id : operation.mask.id,
@@ -199,26 +252,29 @@ export function createDocumentStore() {
       );
       if (all.length > 1000 || pointCount > 200000)
         throw new RangeError("Page capacity reached");
-      const before = getRow(rowId).operations;
-      if (
-        before.length !== frozen.length ||
-        frozen.some((operation, index) => operation !== before[index])
-      )
-        remember({ kind: reason, changes: [{ rowId, before, after: frozen }] });
-      advance(rowId, frozen);
+      const changes = rowIds.flatMap((rowId) => {
+        const before = getRow(rowId).operations;
+        const after = replacements.get(rowId) ?? before;
+        return before.length !== after.length ||
+          after.some((operation, index) => operation !== before[index])
+          ? [{ rowId, before, after }]
+          : [];
+      });
+      remember({ kind: reason, changes });
+      for (const rowId of rowIds) advance(rowId, replacements.get(rowId));
       gesture = null;
-      emit("commit", reason, [rowId]);
+      emit("commit", reason, [...rowIds]);
     },
     cancel() {
       if (!gesture) return;
-      const { rowId, reason } = gesture;
+      const { rowIds, reason } = gesture;
       gesture = null;
-      emit("cancel", reason, [rowId]);
+      emit("cancel", reason, [...rowIds]);
     },
     clear() {
       this.cancel();
       epoch += 1;
-      const changed = ROWS.filter(
+      const changed = GROUPS.filter(
         (row) => getRow(row.id).operations.length,
       ).map((row) => row.id);
       remember({
@@ -263,7 +319,7 @@ export function createDocumentStore() {
       this.cancel();
       past.length = future.length = 0;
       if (!rowId) epoch += 1;
-      const changed = ROWS.filter(
+      const changed = GROUPS.filter(
         (row) =>
           (!rowId || row.id === rowId) && getRow(row.id).operations.length,
       ).map((row) => row.id);

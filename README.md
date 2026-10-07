@@ -140,8 +140,9 @@ old replies cannot restore it after drawing, erasing, cancellation, history or c
 Masked ink is composited in the worker; fully erased rows skip model inference. Unloading
 or replacing a model cancels its pending manifest download. Supported transcripts display
 as normalized arithmetic while raw model text stays available for benchmarking.
-Answers start 12 logical units after surviving ink at the row baseline. They shrink from
-32 to 16 logical units; when space is insufficient, status says **Leave room after =**.
+Answers start 12 logical units after surviving ink and are centered alongside it.
+Comic Sans answer glyphs follow handwriting height within 16–128 logical units,
+with bundled Inter as fallback. When space is insufficient, status says **Leave room after =**.
 
 Choose **Stroke eraser** to remove whole visible strokes or **Pixel eraser** to remove a
 partial brush-width region. Eraser size is the brush diameter in logical page units.
@@ -316,8 +317,9 @@ still pending; selection alone does not demonstrate recognition accuracy.
 
 Notebook and lab share the strict worker arithmetic pipeline. Responses retain raw model
 text for transcription benchmarks and expose normalized text separately. Exactly one
-terminal equals is required; unsupported notation is unrecognized, malformed arithmetic
-is invalid, and exact division by zero returns Undefined. The whole expression is parsed
+terminal equals is required; consecutive `==` or `= =` count as one. Powers such as
+`4^2=`, `4^{2}=`, and `4²=` calculate `16`. Unsupported notation is unrecognized,
+malformed arithmetic is invalid, and undefined real arithmetic returns Undefined. The whole expression is parsed
 before evaluation. Limits and decimal formatting are documented in
 [Phase 2 arithmetic](docs/phase-2-arithmetic.md).
 

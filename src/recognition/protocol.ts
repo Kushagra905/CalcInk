@@ -21,7 +21,10 @@ export type CalculationOutcome =
     }
   | {
       readonly kind: "undefined";
-      readonly code: "DIVISION_BY_ZERO";
+      readonly code:
+        | "DIVISION_BY_ZERO"
+        | "INDETERMINATE_POWER"
+        | "NON_REAL_POWER";
     }
   | {
       readonly kind: "unrecognized";

@@ -238,7 +238,7 @@ export function summarizeFinal(entries: readonly FinalEntry[]) {
     const actual = entry.error
       ? ""
       : (normalized ??
-        (/^[0-9.+*/()=\-]{0,128}$/.test(diagnostic) ? diagnostic : ""));
+        (/^[0-9.+*/^()=\-]{0,128}$/.test(diagnostic) ? diagnostic : ""));
     const transcriptionCorrect =
       !entry.error &&
       entry.result?.outcome.kind !== "unrecognized" &&

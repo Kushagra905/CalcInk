@@ -1,4 +1,5 @@
 import { PAGE } from "../document/rows";
+import { describeOutcome } from "../math/status";
 import type { RecognitionResponse } from "../recognition/protocol";
 
 const FAMILY = '"Comic Sans MS", "Comic Sans", "Inter", sans-serif';
@@ -134,7 +135,10 @@ export function resultStatus(
     case "incomplete":
       return "Keep writing; finish with =";
     case "invalid":
-      return "Invalid expression";
+      return result.outcome.code === "EXPONENT_TOO_LARGE" ||
+        result.outcome.code === "RESULT_TOO_LARGE"
+        ? describeOutcome(result.outcome)
+        : "Invalid expression";
     case "unrecognized":
       return "Could not read this; rewrite clearly";
   }

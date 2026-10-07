@@ -174,6 +174,57 @@ test("production caches real ink-on under a base path and infers after offline r
   expect(external).toEqual([]);
 });
 
+test("a raised handwritten power is recognized and calculated by the real offline model", async ({
+  page,
+  context,
+}) => {
+  await watchResults(page);
+  await ready(page);
+  await context.setOffline(true);
+  await page.reload();
+  await expect(page.getByTestId("offline-status")).toHaveText("Ready offline", {
+    timeout: 90_000,
+  });
+  // Synthetic engineering fixture: 4 with a raised 2 and one handwritten equals.
+  await stroke(page, [
+    [130, 70],
+    [108, 120],
+    [152, 120],
+  ]);
+  await stroke(page, [
+    [144, 70],
+    [144, 150],
+  ]);
+  await stroke(page, [
+    [167, 49],
+    [172, 43],
+    [184, 43],
+    [190, 49],
+    [190, 56],
+    [165, 76],
+    [192, 76],
+  ]);
+  await stroke(page, [
+    [220, 112],
+    [260, 112],
+  ]);
+  await stroke(page, [
+    [220, 132],
+    [260, 132],
+  ]);
+  await expect(page.locator('[data-row="row-1"]')).toHaveClass(/ready/, {
+    timeout: 20_000,
+  });
+  const result = await page.evaluate(() => window.calcinkTestResults.at(-1));
+  console.log(
+    "Actual offline synthetic power inference:",
+    JSON.stringify(result),
+  );
+  expect(result?.modelId).toBe("ink-on-comer-int8");
+  expect(result?.transcript).toContain("^");
+  expect(result?.outcome).toEqual({ kind: "answer", value: "16" });
+});
+
 test("verified caches cannot claim readiness when real model initialization fails", async ({
   page,
 }) => {

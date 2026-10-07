@@ -46,10 +46,33 @@ export function normalizeExpression(
     source = source.slice(open.length, -close.length);
     break;
   }
+  // Unicode superscripts encode an explicit power, rather than another base digit.
+  source = source.replace(/[⁰¹²³⁴⁵⁶⁷⁸⁹⁺⁻⁽⁾]+/g, (power) => {
+    const symbols = "⁰¹²³⁴⁵⁶⁷⁸⁹⁺⁻⁽⁾";
+    const plain = "0123456789+-()";
+    return `^(${Array.from(power, (symbol) => plain[symbols.indexOf(symbol)]).join("")})`;
+  });
   let transcript = "";
+  const exponentBraces: number[] = [];
+  let parenthesisDepth = 0;
   for (let index = 0; index < source.length; ) {
     const symbol = source[index];
     if (/\s/.test(symbol)) {
+      index++;
+      continue;
+    }
+    if (symbol === "{") {
+      if (!transcript.endsWith("^"))
+        return fail("UNSUPPORTED_TOKEN", "unrecognized");
+      exponentBraces.push(parenthesisDepth);
+      transcript += "(";
+      index++;
+      continue;
+    }
+    if (symbol === "}") {
+      if (!exponentBraces.length || exponentBraces.pop() !== parenthesisDepth)
+        return fail("INVALID_WRAPPER");
+      transcript += ")";
       index++;
       continue;
     }
@@ -83,11 +106,14 @@ export function normalizeExpression(
           : symbol === "−"
             ? "-"
             : symbol;
-    if (!/^[0-9.+\-*/()=]$/.test(canonical))
+    if (!/^[0-9.+\-*/^()=]$/.test(canonical))
       return fail("UNSUPPORTED_TOKEN", "unrecognized");
+    if (canonical === "(") parenthesisDepth++;
+    if (canonical === ")") parenthesisDepth--;
     transcript += canonical;
     index++;
   }
+  if (exponentBraces.length) return fail("INVALID_WRAPPER");
   // Recognizers can repeat the completion marker, including with spacing between it.
   // Collapse only adjacent markers; equals separated by math remain distinct.
   // Accuracy scoring retains duplicates to count recognition errors honestly.
@@ -95,7 +121,7 @@ export function normalizeExpression(
     transcript = transcript.replace(/=+/g, "=");
   if (transcript.length > expressionLimits.normalizedCharacters)
     return fail("INPUT_TOO_LONG");
-  if ((transcript.match(/[+\-*/]/g)?.length ?? 0) > expressionLimits.operators)
+  if ((transcript.match(/[+\-*/^]/g)?.length ?? 0) > expressionLimits.operators)
     return fail("TOO_MANY_OPERATORS");
   const equals = transcript.match(/=/g)?.length ?? 0;
   if (equals > 1) return fail("MULTIPLE_EQUALS");

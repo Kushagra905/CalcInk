@@ -56,6 +56,22 @@ describe("continuous notebook ink", () => {
     expect(writingGroup(document.getRows(), { x: 100, y: 40 })).toBe("row-2");
   });
 
+  it("keeps a raised exponent with its base without absorbing a distant or separate line", () => {
+    const document = createDocumentStore();
+    document.begin("row-1");
+    document.commit([stroke("base", "row-1", 100, 160)]);
+    expect(writingGroup(document.getRows(), { x: 155, y: 60 })).toBe("row-1");
+    expect(writingGroup(document.getRows(), { x: 800, y: 60 })).not.toBe(
+      "row-1",
+    );
+    expect(writingGroup(document.getRows(), { x: 100, y: 40 })).not.toBe(
+      "row-1",
+    );
+    expect(writingGroup(document.getRows(), { x: 155, y: 220 })).not.toBe(
+      "row-1",
+    );
+  });
+
   it("keeps a sweep over several groups as one undo command and validates atomically", () => {
     const document = createDocumentStore();
     for (const [id, y] of [

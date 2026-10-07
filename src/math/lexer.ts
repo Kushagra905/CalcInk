@@ -4,7 +4,7 @@ export type Token =
   | { readonly kind: "number"; readonly value: string }
   | {
       readonly kind: "symbol";
-      readonly value: "+" | "-" | "*" | "/" | "(" | ")";
+      readonly value: "+" | "-" | "*" | "/" | "^" | "(" | ")";
     }
   | { readonly kind: "end" };
 
@@ -25,6 +25,7 @@ export function tokenize(expression: string): readonly Token[] {
       value !== "-" &&
       value !== "*" &&
       value !== "/" &&
+      value !== "^" &&
       value !== "(" &&
       value !== ")"
     )

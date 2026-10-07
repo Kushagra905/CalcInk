@@ -31,6 +31,9 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
+        env:
+          # Browser WASM inference does not need the native CUDA download.
+          ONNXRUNTIME_NODE_INSTALL: skip
       - run: npm run check
       - run: npm run test:unit
       - run: npm run test:assets

@@ -44,6 +44,25 @@ React owns controls, progress and readable result/error state. Imperative Canvas
 
 ## Recognition and arithmetic
 
+`App.tsx` switches between the persistent notebook and a separate session-only
+graph document. `Notebook.tsx` reuses the pointer/history/eraser pipeline for a
+280-unit-high graph pad, with one expression group and matching logical/display
+coordinates. Only the active workspace owns a recognition coordinator; switching
+disposes its worker before connecting the other document. Recognition requests
+carry an optional vocabulary mode: number for notebook arithmetic and expression
+for graph algebra. Raw graph transcripts remain available even when the strict
+arithmetic evaluator rejects variables. A manual correction is associated with
+the ink revision so a late reply or workspace switch cannot overwrite it.
+
+`src/graph/equation.ts` safely parses two-sided equations with x/y, functions,
+implicit multiplication and supported LaTeX using bounded tokens and nesting.
+It compiles arithmetic closures, never JavaScript source. `plot.ts` samples
+explicit functions and uses marching squares for implicit zero contours, rejecting
+non-finite samples and pole sign changes. `GraphCanvas.tsx` renders axes, adaptive
+grid ticks and curves on Canvas 2D with pointer pan, cursor-anchored wheel/pinch
+zoom, keyboard controls and resize/DPR replay. `ColourPicker.tsx` supplies a shared
+accessible in-app swatch/HSV/hex palette; there are no new dependencies.
+
 `src/recognition/connect.ts` connects the document to `coordinator.ts` and `trial-client.ts`. Completed edits wait 350 ms. There is one active inference and at most one latest pending snapshot per row. Starting an edit clears the old answer immediately. Cancellation, erase, clear and history operations use the same invalidation path.
 
 The nested protocol in `protocol.ts` carries epoch, row ID/revision, request ID and model ID. The coordinator/client accept results only when every identity matches. Late errors and stale results cannot restore an obsolete answer. A ten-second inference timeout permits one worker restart; repeated failures expose retry while retaining ink. Failed or disposed workers terminate rather than accumulating sessions.

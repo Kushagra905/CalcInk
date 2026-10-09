@@ -12,7 +12,12 @@ export const MOCK_MODEL_ID = "CALCINK_DEVELOPMENT_MOCK";
 export function connectRecognition(
   document: DocumentStore,
   callbacks: CoordinatorCallbacks,
-  options: { worker?: WorkerPort; behavior?: string; delayMs?: number } = {},
+  options: {
+    worker?: WorkerPort;
+    behavior?: string;
+    delayMs?: number;
+    mode?: "number" | "expression";
+  } = {},
 ): RecognitionCoordinator {
   const query = new URLSearchParams(globalThis.location?.search);
   const behavior = options.behavior ?? query.get("mock") ?? "normal";
@@ -33,6 +38,7 @@ export function connectRecognition(
   let starts = 0;
   return createCoordinator(document, callbacks, {
     candidate,
+    mode: options.mode,
     baseUrl: "http://localhost/",
     manifest: {
       modelId: MOCK_MODEL_ID,

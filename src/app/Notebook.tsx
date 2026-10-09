@@ -22,6 +22,7 @@ export interface RowFeedback {
 }
 
 export function Notebook({
+  compact = false,
   document,
   width,
   color,
@@ -36,6 +37,7 @@ export function Notebook({
   pan,
   disabled,
 }: {
+  compact?: boolean;
   document: DocumentStore;
   width: number;
   color: string;
@@ -50,6 +52,7 @@ export function Notebook({
   pan: boolean;
   disabled: boolean;
 }) {
+  const pageHeight = compact ? 280 : PAGE.height;
   const ink = useRef<HTMLCanvasElement>(null);
   const live = useRef<HTMLCanvasElement>(null);
   const results = useRef<HTMLCanvasElement>(null);
@@ -103,7 +106,7 @@ export function Notebook({
     const canvas = results.current;
     const context = canvas?.getContext("2d");
     if (!canvas || !context) return;
-    context.clearRect(0, 0, PAGE.width, PAGE.height);
+    context.clearRect(0, 0, PAGE.width, pageHeight);
     for (const row of document.getRows()) {
       const result = feedback[row.rowId]?.result;
       if (
@@ -113,7 +116,7 @@ export function Notebook({
       )
         drawAnswer(context, result);
     }
-  }, [feedback, document, fontReady]);
+  }, [feedback, document, fontReady, pageHeight]);
 
   useEffect(() => {
     if (!ink.current || !live.current || !results.current) return;
@@ -162,10 +165,12 @@ export function Notebook({
       scrollX: number;
       scrollY: number;
     } | null = null;
-    const viewport = input.closest<HTMLElement>(".sheet-viewport");
+    const viewport = input.closest<HTMLElement>(
+      ".sheet-viewport, .graph-pad-viewport",
+    );
 
     function repaint() {
-      committed.clearRect(0, 0, PAGE.width, PAGE.height);
+      committed.clearRect(0, 0, PAGE.width, pageHeight);
       for (const row of document.getRows())
         replayRow(
           committed,
@@ -179,9 +184,9 @@ export function Notebook({
     function stopPreview() {
       cancelAnimationFrame(frame);
       frame = 0;
-      preview.clearRect(0, 0, PAGE.width, PAGE.height);
+      preview.clearRect(0, 0, PAGE.width, pageHeight);
       input.style.opacity = "1";
-      stableContext.clearRect(0, 0, PAGE.width, PAGE.height);
+      stableContext.clearRect(0, 0, PAGE.width, pageHeight);
     }
 
     function cancel() {
@@ -210,7 +215,7 @@ export function Notebook({
           layer.width / PAGE.width,
           0,
           0,
-          layer.height / PAGE.height,
+          layer.height / pageHeight,
           0,
           0,
         );
@@ -221,7 +226,7 @@ export function Notebook({
         stable.width / PAGE.width,
         0,
         0,
-        stable.height / PAGE.height,
+        stable.height / pageHeight,
         0,
         0,
       );
@@ -242,10 +247,11 @@ export function Notebook({
         event.clientX,
         event.clientY,
         input.getBoundingClientRect(),
+        pageHeight,
       );
       return {
         x: Math.max(0, Math.min(PAGE.width, position.x)),
-        y: Math.max(0, Math.min(PAGE.height, position.y)),
+        y: Math.max(0, Math.min(pageHeight, position.y)),
         pressure: event.pressure,
         t: event.timeStamp,
       };
@@ -274,21 +280,21 @@ export function Notebook({
           gesture.processed = gesture.points.length;
           repaint();
         } else {
-          committed.clearRect(0, 0, PAGE.width, PAGE.height);
+          committed.clearRect(0, 0, PAGE.width, pageHeight);
           committed.save();
           committed.beginPath();
-          committed.rect(0, 0, PAGE.width, PAGE.height);
+          committed.rect(0, 0, PAGE.width, pageHeight);
           committed.clip();
-          committed.drawImage(stable, 0, 0, PAGE.width, PAGE.height);
+          committed.drawImage(stable, 0, 0, PAGE.width, pageHeight);
           committed.globalCompositeOperation = "destination-out";
           drawPath(committed, gesture.points, gesture.radius * 2);
           committed.restore();
         }
-        preview.clearRect(0, 0, PAGE.width, PAGE.height);
+        preview.clearRect(0, 0, PAGE.width, pageHeight);
         const last = gesture.points[gesture.points.length - 1];
         preview.save();
         preview.beginPath();
-        preview.rect(0, 0, PAGE.width, PAGE.height);
+        preview.rect(0, 0, PAGE.width, pageHeight);
         preview.clip();
         preview.beginPath();
         preview.arc(last.x, last.y, gesture.radius, 0, Math.PI * 2);
@@ -309,12 +315,12 @@ export function Notebook({
         );
         gesture.painted = Math.max(1, gesture.points.length - 1);
       }
-      preview.clearRect(0, 0, PAGE.width, PAGE.height);
+      preview.clearRect(0, 0, PAGE.width, pageHeight);
       preview.save();
       preview.beginPath();
-      preview.rect(0, 0, PAGE.width, PAGE.height);
+      preview.rect(0, 0, PAGE.width, pageHeight);
       preview.clip();
-      preview.drawImage(stable, 0, 0, PAGE.width, PAGE.height);
+      preview.drawImage(stable, 0, 0, PAGE.width, pageHeight);
       preview.fillStyle = preview.strokeStyle = gesture.color;
       drawPath(preview, gesture.points, gesture.width, gesture.painted);
       preview.restore();
@@ -346,12 +352,13 @@ export function Notebook({
         event.clientX,
         event.clientY,
         input.getBoundingClientRect(),
+        pageHeight,
       );
       if (
         position.x < 0 ||
         position.x > PAGE.width ||
         position.y < 0 ||
-        position.y > PAGE.height
+        position.y > pageHeight
       )
         return;
       onError("");
@@ -366,7 +373,9 @@ export function Notebook({
           );
         const rowId =
           selected.tool === "draw"
-            ? writingGroup(document.getRows(), position)
+            ? compact
+              ? "row-1"
+              : writingGroup(document.getRows(), position)
             : "row-1";
         const touched =
           selected.tool === "draw"
@@ -394,7 +403,7 @@ export function Notebook({
           processed: 0,
         };
         if (selected.tool === "erase-pixel")
-          stableContext.drawImage(layers[0], 0, 0, PAGE.width, PAGE.height);
+          stableContext.drawImage(layers[0], 0, 0, PAGE.width, pageHeight);
         // Apply opacity once to the entire live curve, avoiding dark seams at cached segments.
         input.style.opacity = String(
           selected.tool === "draw" ? strokeOpacity(selected.penStyle) : 1,
@@ -513,9 +522,9 @@ export function Notebook({
       if (event.reason === "clear") setActiveLine(null);
       if (event.epoch !== outputEpoch) {
         outputEpoch = event.epoch;
-        output.clearRect(0, 0, PAGE.width, PAGE.height);
+        output.clearRect(0, 0, PAGE.width, pageHeight);
       }
-      output.clearRect(0, 0, PAGE.width, PAGE.height);
+      output.clearRect(0, 0, PAGE.width, pageHeight);
       const changedIds = new Set(event.rows.map((row) => row.rowId));
       for (const row of document.getRows()) {
         if (changedIds.has(row.rowId)) continue;
@@ -562,33 +571,38 @@ export function Notebook({
       input.removeEventListener("pointercancel", lost);
       input.removeEventListener("lostpointercapture", lost);
     };
-  }, [document, onError]);
+  }, [document, onError, compact, pageHeight]);
 
   return (
-    <div className="notebook" id="handwriting-notebook">
-      <header className="paper-heading">
-        <div>
-          <label className="page-title-label" htmlFor="notebook-page-title">
-            MY MATH NOTEBOOK
-          </label>
-          <input
-            id="notebook-page-title"
-            className="page-title-input"
-            aria-label="Page title"
-            value={title}
-            maxLength={64}
-            placeholder="Untitled page"
-            disabled={disabled}
-            onChange={(event) => onTitleChange(event.target.value)}
-          />
-        </div>
-        <span className="paper-page-number">
-          {String(pageNumber).padStart(2, "0")}
-        </span>
-      </header>
+    <div
+      className={`notebook${compact ? " graph-pad" : ""}`}
+      id={compact ? "graph-writing-pad" : "handwriting-notebook"}
+    >
+      {!compact && (
+        <header className="paper-heading">
+          <div>
+            <label className="page-title-label" htmlFor="notebook-page-title">
+              MY MATH NOTEBOOK
+            </label>
+            <input
+              id="notebook-page-title"
+              className="page-title-input"
+              aria-label="Page title"
+              value={title}
+              maxLength={64}
+              placeholder="Untitled page"
+              disabled={disabled}
+              onChange={(event) => onTitleChange(event.target.value)}
+            />
+          </div>
+          <span className="paper-page-number">
+            {String(pageNumber).padStart(2, "0")}
+          </span>
+        </header>
+      )}
       <div
         className="paper"
-        style={{ aspectRatio: `${PAGE.width} / ${PAGE.height}` }}
+        style={{ aspectRatio: `${PAGE.width} / ${pageHeight}` }}
       >
         <div className="margin-line" />
         <div className="paper-rules" aria-hidden="true" />
@@ -597,8 +611,8 @@ export function Notebook({
             className="active-writing-line"
             aria-hidden="true"
             style={{
-              top: `${(activeLine / PAGE.height) * 100}%`,
-              height: `${(RULE_SPACING / PAGE.height) * 100}%`,
+              top: `${(activeLine / pageHeight) * 100}%`,
+              height: `${(RULE_SPACING / pageHeight) * 100}%`,
             }}
           />
         )}
@@ -608,7 +622,7 @@ export function Notebook({
             aria-hidden="true"
             key={row.id}
             style={{
-              top: `${(row.top / PAGE.height) * 100}%`,
+              top: `${(row.top / pageHeight) * 100}%`,
               height: "1px",
             }}
           />
@@ -624,9 +638,13 @@ export function Notebook({
           ref={live}
           data-layer="live"
           className={`canvas-layer input-layer${pan ? " pan-layer" : ""}`}
-          aria-label="Handwriting canvas, continuous notebook page"
+          aria-label={
+            compact
+              ? "Graph handwriting canvas"
+              : "Handwriting canvas, continuous notebook page"
+          }
           aria-disabled={disabled}
-          aria-describedby="writing-help"
+          aria-describedby={compact ? "graph-writing-help" : "writing-help"}
           tabIndex={0}
         />
         <canvas
@@ -636,65 +654,69 @@ export function Notebook({
           aria-hidden="true"
           tabIndex={-1}
         />
-        <ol
-          className="row-feedbacks"
-          aria-live="polite"
-          aria-label="Equation transcripts"
-        >
-          {document.getRows().map((row, index) => {
-            const state = feedback[row.rowId] ?? {
-              kind: "idle",
-              transcript: "",
-            };
-            const result = accepted(row.rowId, state);
-            const bounds = groupBounds(row);
-            const context = results.current?.getContext("2d");
-            const status = result
-              ? resultStatus(
-                  result,
-                  !!context && !!measureAnswer(context, result),
-                )
-              : "";
-            return (
-              <li
-                key={row.rowId}
-                data-row={row.rowId}
-                className={`row-feedback ${state.kind}`}
-                style={{
-                  top: `${(Math.max(0, (bounds?.y ?? 0) - 24) / PAGE.height) * 100}%`,
-                  left: `${((bounds?.x ?? 44) / PAGE.width) * 100}%`,
-                }}
-              >
-                <span className="feedback-row">Expression {index + 1}</span>
-                <span>
-                  {state.kind === "idle" ? (
-                    "Write an expression"
-                  ) : state.kind === "recognizing" ? (
-                    "Recognizing…"
-                  ) : result ? (
-                    <>
-                      <span className="row-state">{status}</span>
-                      {result.transcript && (
-                        <span className="row-transcript">
-                          {(result.normalizedTranscript ?? result.transcript)
-                            .replaceAll("*", "×")
-                            .replaceAll("/", "÷")}
-                        </span>
-                      )}
-                    </>
-                  ) : (
-                    state.transcript
-                  )}
-                </span>
-              </li>
-            );
-          })}
-        </ol>
+        {!compact && (
+          <ol
+            className="row-feedbacks"
+            aria-live="polite"
+            aria-label="Equation transcripts"
+          >
+            {document.getRows().map((row, index) => {
+              const state = feedback[row.rowId] ?? {
+                kind: "idle",
+                transcript: "",
+              };
+              const result = accepted(row.rowId, state);
+              const bounds = groupBounds(row);
+              const context = results.current?.getContext("2d");
+              const status = result
+                ? resultStatus(
+                    result,
+                    !!context && !!measureAnswer(context, result),
+                  )
+                : "";
+              return (
+                <li
+                  key={row.rowId}
+                  data-row={row.rowId}
+                  className={`row-feedback ${state.kind}`}
+                  style={{
+                    top: `${(Math.max(0, (bounds?.y ?? 0) - 24) / pageHeight) * 100}%`,
+                    left: `${((bounds?.x ?? 44) / PAGE.width) * 100}%`,
+                  }}
+                >
+                  <span className="feedback-row">Expression {index + 1}</span>
+                  <span>
+                    {state.kind === "idle" ? (
+                      "Write an expression"
+                    ) : state.kind === "recognizing" ? (
+                      "Recognizing…"
+                    ) : result ? (
+                      <>
+                        <span className="row-state">{status}</span>
+                        {result.transcript && (
+                          <span className="row-transcript">
+                            {(result.normalizedTranscript ?? result.transcript)
+                              .replaceAll("*", "×")
+                              .replaceAll("/", "÷")}
+                          </span>
+                        )}
+                      </>
+                    ) : (
+                      state.transcript
+                    )}
+                  </span>
+                </li>
+              );
+            })}
+          </ol>
+        )}
       </div>
-      <footer className="paper-footer">
-        <span>Ink first. Answers alongside.</span>
-        <span>PAGE {String(pageNumber).padStart(2, "0")}</span>
-      </footer>
+      {!compact && (
+        <footer className="paper-footer">
+          <span>Ink first. Answers alongside.</span>
+          <span>PAGE {String(pageNumber).padStart(2, "0")}</span>
+        </footer>
+      )}
     </div>
   );
 }

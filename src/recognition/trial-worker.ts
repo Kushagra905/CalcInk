@@ -58,6 +58,11 @@ async function handle(message: MainToWorkerMessage): Promise<void> {
     }
     const { epoch, rowId, rowRevision, requestId } = message.request;
     key = { epoch, rowId, rowRevision, requestId };
+    if (
+      message.request.mode !== undefined &&
+      !["number", "expression"].includes(message.request.mode)
+    )
+      throw new Error("INVALID_RECOGNITION_MODE");
     if (!adapter) throw new Error("ADAPTER_NOT_READY");
     send({
       type: "RESULT",

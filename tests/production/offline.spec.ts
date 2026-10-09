@@ -2,11 +2,15 @@ import { spawnSync } from "node:child_process";
 import { readFile, writeFile } from "node:fs/promises";
 import { expect, type Page, test } from "@playwright/test";
 import { PAGE } from "../../src/document/rows";
-import type { RecognitionResponse } from "../../src/recognition/protocol";
+import type {
+  RecognitionRequest,
+  RecognitionResponse,
+} from "../../src/recognition/protocol";
 
 declare global {
   interface Window {
     calcinkTestResults: RecognitionResponse[];
+    calcinkTestRequests: RecognitionRequest[];
   }
 }
 test.use({ viewport: { width: 1280, height: 1100 } });
@@ -14,8 +18,23 @@ test.use({ viewport: { width: 1280, height: 1100 } });
 async function watchResults(page: Page) {
   await page.addInitScript(() => {
     window.calcinkTestResults = [];
+    window.calcinkTestRequests = [];
     const NativeWorker = window.Worker;
     window.Worker = class extends NativeWorker {
+      postMessage(
+        message: unknown,
+        transferOrOptions?: Transferable[] | StructuredSerializeOptions,
+      ) {
+        const data = message as {
+          type?: string;
+          request?: RecognitionRequest;
+        };
+        if (data.type === "RECOGNIZE" && data.request)
+          window.calcinkTestRequests.push(data.request);
+        if (Array.isArray(transferOrOptions))
+          super.postMessage(message, transferOrOptions);
+        else super.postMessage(message, transferOrOptions);
+      }
       constructor(...args: ConstructorParameters<typeof Worker>) {
         super(...args);
         this.addEventListener("message", (event) => {
@@ -33,7 +52,11 @@ async function ready(page: Page) {
   });
   await expect(page.locator(".mock-notice")).toHaveCount(0);
 }
-async function stroke(page: Page, points: [number, number][]) {
+async function stroke(
+  page: Page,
+  points: [number, number][],
+  logicalHeight: number = PAGE.height,
+) {
   const canvas = page.locator('[data-layer="live"]');
   await page.locator(".row-guide").first().scrollIntoViewIfNeeded();
   const box = await canvas.boundingBox();
@@ -41,7 +64,7 @@ async function stroke(page: Page, points: [number, number][]) {
   const move = async ([x, y]: [number, number]) =>
     page.mouse.move(
       box.x + (x / 960) * box.width,
-      box.y + (y / PAGE.height) * box.height,
+      box.y + (y / logicalHeight) * box.height,
     );
   await move(points[0]);
   await page.mouse.down();
@@ -70,6 +93,110 @@ async function bitmap(page: Page) {
     .evaluate((canvas: HTMLCanvasElement) => canvas.toDataURL());
 }
 
+test("algebra recognition and explicit/implicit graphs work offline in the production app", async ({
+  page,
+  context,
+}, testInfo) => {
+  await watchResults(page);
+  await ready(page);
+  await context.setOffline(true);
+  await page.getByRole("button", { name: "Graph", exact: true }).click();
+  await expect(page.locator(".model-badge")).toHaveText("Model ready", {
+    timeout: 90000,
+  });
+  // Synthetic y=x engineering strokes: not genuine handwriting accuracy evidence.
+  for (const points of [
+    [
+      [105, 45],
+      [120, 70],
+      [144, 44],
+      [120, 108],
+    ],
+    [
+      [165, 62],
+      [197, 62],
+    ],
+    [
+      [165, 82],
+      [197, 82],
+    ],
+    [
+      [228, 47],
+      [268, 102],
+    ],
+    [
+      [268, 47],
+      [228, 102],
+    ],
+  ] as [number, number][][])
+    await stroke(page, points, 280);
+  await expect
+    .poll(
+      () =>
+        page.evaluate(() => window.calcinkTestResults.at(-1)?.rowRevision ?? 0),
+      { timeout: 15000 },
+    )
+    .toBeGreaterThan(0);
+  const response = await page.evaluate(() => window.calcinkTestResults.at(-1));
+  expect(
+    await page.evaluate(() => window.calcinkTestRequests.at(-1)?.mode),
+  ).toBe("expression");
+  expect(response?.modelId).toBe("ink-on-comer-int8");
+  expect(response?.transcript).toBeTruthy();
+  expect(response?.transcript.replaceAll(/\s/g, "")).toBe("y=x");
+  console.log(
+    "Actual offline synthetic algebra inference:",
+    response?.transcript,
+  );
+  await expect(page.getByLabel("Graph equation")).toHaveValue(
+    response?.transcript ?? "",
+  );
+  await expect(page.locator("#graph-equation-status")).toContainText(
+    "Plotted below",
+  );
+  await page.getByLabel("Graph equation").fill("x^2+y^2=9");
+  await expect(page.locator("#graph-equation-status")).toContainText(
+    "Plotted below",
+  );
+  await page.getByRole("button", { name: "Zoom graph in" }).click();
+  await expect(page.getByTestId("graph-view")).toHaveAttribute(
+    "data-scale",
+    "50",
+  );
+  await page.getByRole("button", { name: "Reset view" }).click();
+  await page.getByRole("img", { name: /^Interactive graph/ }).screenshot({
+    path: testInfo.outputPath("implicit-circle.png"),
+  });
+  await page.screenshot({
+    path: testInfo.outputPath("graph-desktop.png"),
+    fullPage: true,
+  });
+  await page.getByRole("button", { name: "Notebook", exact: true }).click();
+  await expect(page.getByTestId("save-status")).toHaveText(
+    "Saved on this device",
+  );
+  await expect(page.locator(".model-badge")).toHaveText("Model ready", {
+    timeout: 90000,
+  });
+  await oneEquals(page);
+  await expect(page.locator('[data-row="row-1"]')).toHaveClass(/ready/, {
+    timeout: 15000,
+  });
+  expect(
+    await page.evaluate(() => window.calcinkTestResults.at(-1)?.outcome),
+  ).toEqual({ kind: "answer", value: "1" });
+  expect(
+    await page.evaluate(() => window.calcinkTestRequests.at(-1)?.mode),
+  ).toBe("number");
+  await page.getByRole("button", { name: "Graph", exact: true }).click();
+  await expect(page.getByLabel("Graph equation")).toHaveValue("x^2+y^2=9");
+  await expect(page.locator(".model-badge")).toHaveText("Model ready", {
+    timeout: 90000,
+  });
+  await page.waitForTimeout(1000);
+  await expect(page.getByLabel("Graph equation")).toHaveValue("x^2+y^2=9");
+});
+
 test("coloured pencil calculations survive highlighting and an offline reload", async ({
   page,
   context,
@@ -79,13 +206,9 @@ test("coloured pencil calculations survive highlighting and an offline reload", 
   await context.setOffline(true);
   await page.getByLabel("Pen style").selectOption("pencil");
   await page.getByRole("slider", { name: "Width", exact: true }).fill("3");
-  await page.getByLabel("Pen colour").evaluate((input: HTMLInputElement) => {
-    Object.getOwnPropertyDescriptor(
-      HTMLInputElement.prototype,
-      "value",
-    )?.set?.call(input, "#2155cd");
-    input.dispatchEvent(new Event("input", { bubbles: true }));
-  });
+  await page.getByLabel("Choose pen colour").click();
+  await page.getByLabel("Pen colour", { exact: true }).fill("#2155cd");
+  await page.keyboard.press("Escape");
   await oneEquals(page);
   await expect(page.locator('[data-row="row-1"]')).toHaveClass(/ready/, {
     timeout: 15000,

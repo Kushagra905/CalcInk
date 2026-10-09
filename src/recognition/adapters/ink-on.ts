@@ -157,7 +157,11 @@ export class InkOnAdapter implements RecognitionAdapter {
     }
     const preprocessMs = performance.now() - start;
     const inferStart = performance.now();
-    const result = await engine.recognize(input, vocab, "number");
+    const result = await engine.recognize(
+      input,
+      vocab,
+      request.mode ?? "number",
+    );
     if (this.disposed) throw new Error("ADAPTER_DISPOSED");
     return {
       ...key,

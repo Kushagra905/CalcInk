@@ -153,6 +153,21 @@ beforeEach(() => {
 });
 afterEach(() => vi.unstubAllGlobals());
 
+it("uses expression vocabulary for graphs and preserves number mode for notebooks", async () => {
+  const model = adapter("ink-on");
+  await model.initialize();
+  await model.recognize(request);
+  expect(runtime.infer.mock.calls.at(-1)?.[2]).toBe("number");
+  crop = { width: 32, height: 32 };
+  runtime.rasterize.mockReturnValue({
+    canvas: crop,
+    visibleInkBounds: { x: 10, y: 20, width: 20, height: 20 },
+  });
+  await model.recognize({ ...request, requestId: 6, mode: "expression" });
+  expect(runtime.infer.mock.calls.at(-1)?.[2]).toBe("expression");
+  model.dispose();
+});
+
 describe.each(["ink-on", "trocr"] as const)("%s adapter lifecycle", (kind) => {
   it("shares initialization and releases an idempotently disposed session once", async () => {
     const model = adapter(kind);

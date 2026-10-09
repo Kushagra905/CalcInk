@@ -33,13 +33,15 @@ test("narrow layouts retain readable text, 44px controls and visible keyboard fo
         overflow: document.documentElement.scrollWidth > innerWidth,
         controls: [
           ...document.querySelectorAll<HTMLElement>(
-            ".notebook-tools button, .notebook-tools input",
+            ".notebook-tools button, .notebook-tools input, .notebook-tools summary",
           ),
-        ].map((element) => ({
-          name: element.textContent || element.getAttribute("type"),
-          width: element.getBoundingClientRect().width,
-          height: element.getBoundingClientRect().height,
-        })),
+        ]
+          .filter((element) => element.getBoundingClientRect().height > 0)
+          .map((element) => ({
+            name: element.textContent || element.getAttribute("type"),
+            width: element.getBoundingClientRect().width,
+            height: element.getBoundingClientRect().height,
+          })),
         contrast: text.map((element) => {
           let parent: HTMLElement | null = element;
           let background = "rgb(255, 255, 255)";

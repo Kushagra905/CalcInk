@@ -1,8 +1,20 @@
-import type { InkOperation, Point } from "../document/types";
+import type { InkOperation, PenStyle, Point } from "../document/types";
 
 export type InkContext =
   | CanvasRenderingContext2D
   | OffscreenCanvasRenderingContext2D;
+
+export function strokeOpacity(style: PenStyle = "pen"): number {
+  return style === "pencil" ? 0.58 : style === "highlighter" ? 0.28 : 1;
+}
+
+export function isWritingStroke(
+  operation: InkOperation,
+): operation is Extract<InkOperation, { kind: "stroke" }> {
+  return (
+    operation.kind === "stroke" && operation.stroke.style !== "highlighter"
+  );
+}
 
 export function drawPath(
   context: InkContext,
@@ -51,12 +63,25 @@ export function drawPath(
 export function replayInk(
   context: InkContext,
   operations: readonly InkOperation[],
-  color = "#30352f",
+  color?: string,
+  mode: "display" | "recognition" = "display",
 ): void {
   context.save();
-  context.fillStyle = color;
-  context.strokeStyle = color;
   for (const operation of operations) {
+    if (
+      mode === "recognition" &&
+      operation.kind === "stroke" &&
+      !isWritingStroke(operation)
+    )
+      continue;
+    context.globalAlpha =
+      operation.kind === "stroke" && mode === "display"
+        ? strokeOpacity(operation.stroke.style)
+        : 1;
+    context.fillStyle = context.strokeStyle =
+      color ??
+      (operation.kind === "stroke" ? operation.stroke.color : undefined) ??
+      "#30352f";
     context.globalCompositeOperation =
       operation.kind === "stroke" ? "source-over" : "destination-out";
     drawPath(

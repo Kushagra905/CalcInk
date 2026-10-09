@@ -7,6 +7,7 @@ import {
   type SaveState,
 } from "../document/persistence";
 import { GROUPS } from "../document/rows";
+import type { PenStyle } from "../document/types";
 import type { InkTool } from "../ink/eraser";
 import { connectOffline, type OfflineState } from "../offline/client";
 import { getCandidate, selectedModelId } from "../recognition/candidates";
@@ -37,7 +38,13 @@ export function App() {
     null,
   );
   const importFile = useRef<HTMLInputElement>(null);
-  const [width, setWidth] = useState(3);
+  const [penStyle, setPenStyle] = useState<PenStyle>("pen");
+  const [brushes, setBrushes] = useState({
+    pen: { width: 3, color: "#30352f" },
+    pencil: { width: 2, color: "#30352f" },
+    highlighter: { width: 24, color: "#f2c94c" },
+  });
+  const { width, color } = brushes[penStyle];
   const [tool, setTool] = useState<InkTool>("draw");
   const [pan, setPan] = useState(false);
   const [zoom, setZoom] = useState(100);
@@ -402,7 +409,15 @@ export function App() {
             <fieldset className="tool-group" aria-label="Drawing tool">
               {(
                 [
-                  ["draw", "Pen", "pen"],
+                  [
+                    "draw",
+                    penStyle === "pencil"
+                      ? "Pencil"
+                      : penStyle === "highlighter"
+                        ? "Highlighter"
+                        : "Pen",
+                    "pen",
+                  ],
                   ["erase-stroke", "Stroke eraser", "eraser"],
                   ["erase-pixel", "Pixel eraser", "pixel"],
                 ] as const
@@ -434,18 +449,59 @@ export function App() {
                 Move
               </button>
             </fieldset>
+            <label className="pen-style">
+              Style
+              <select
+                aria-label="Pen style"
+                value={penStyle}
+                disabled={opening}
+                onChange={(event) => {
+                  setPenStyle(event.target.value as PenStyle);
+                  setTool("draw");
+                  setPan(false);
+                }}
+              >
+                <option value="pen">Pen</option>
+                <option value="pencil">Pencil</option>
+                <option value="highlighter">Highlighter</option>
+              </select>
+            </label>
+            <label className="pen-color">
+              Colour
+              <input
+                type="color"
+                aria-label="Pen colour"
+                value={color}
+                disabled={opening}
+                onChange={(event) => {
+                  const color = event.target.value;
+                  setBrushes((current) => ({
+                    ...current,
+                    [penStyle]: { ...current[penStyle], color },
+                  }));
+                  setTool("draw");
+                  setPan(false);
+                }}
+              />
+            </label>
             <label className="pen-width">
               {tool === "draw" ? "Width" : "Eraser size"}
               <input
                 type="range"
                 min={tool === "draw" ? 1 : 2}
-                max={tool === "draw" ? 12 : 80}
-                value={tool === "draw" ? width : eraserSize}
-                onChange={(event) =>
-                  tool === "draw"
-                    ? setWidth(Number(event.target.value))
-                    : setEraserSize(Number(event.target.value))
+                max={
+                  tool === "draw" ? (penStyle === "highlighter" ? 48 : 12) : 80
                 }
+                value={tool === "draw" ? width : eraserSize}
+                onChange={(event) => {
+                  const size = Number(event.target.value);
+                  if (tool === "draw")
+                    setBrushes((current) => ({
+                      ...current,
+                      [penStyle]: { ...current[penStyle], width: size },
+                    }));
+                  else setEraserSize(size);
+                }}
               />
               <output>{tool === "draw" ? width : eraserSize}</output>
             </label>
@@ -501,6 +557,8 @@ export function App() {
               <Notebook
                 document={document}
                 width={width}
+                color={color}
+                penStyle={penStyle}
                 tool={tool}
                 eraserRadius={eraserSize / 2}
                 feedback={feedback}
@@ -517,7 +575,9 @@ export function App() {
             <span>
               {pan
                 ? "Move mode · scroll the page without drawing"
-                : "Made for your handwriting"}
+                : tool === "draw" && penStyle === "highlighter"
+                  ? "Highlighter · annotations are excluded from calculations"
+                  : "Made for your handwriting"}
             </span>
             <div className="page-pagination">
               <button

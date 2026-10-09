@@ -69,6 +69,81 @@ async function bitmap(page: Page) {
     .locator('[data-layer="ink"]')
     .evaluate((canvas: HTMLCanvasElement) => canvas.toDataURL());
 }
+
+test("coloured pencil calculations survive highlighting and an offline reload", async ({
+  page,
+  context,
+}, testInfo) => {
+  await watchResults(page);
+  await ready(page);
+  await context.setOffline(true);
+  await page.getByLabel("Pen style").selectOption("pencil");
+  await page.getByRole("slider", { name: "Width", exact: true }).fill("3");
+  await page.getByLabel("Pen colour").evaluate((input: HTMLInputElement) => {
+    Object.getOwnPropertyDescriptor(
+      HTMLInputElement.prototype,
+      "value",
+    )?.set?.call(input, "#2155cd");
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await oneEquals(page);
+  await expect(page.locator('[data-row="row-1"]')).toHaveClass(/ready/, {
+    timeout: 15000,
+  });
+  const original = await page.evaluate(() => window.calcinkTestResults.at(-1));
+  expect(original?.normalizedTranscript).toBe("1=");
+  expect(original?.outcome).toEqual({ kind: "answer", value: "1" });
+  await page.getByLabel("Pen style").selectOption("highlighter");
+  await stroke(page, [
+    [100, 75],
+    [240, 75],
+  ]);
+  await expect
+    .poll(
+      () => page.evaluate(() => window.calcinkTestResults.at(-1)?.rowRevision),
+      { timeout: 15000 },
+    )
+    .toBeGreaterThan(original?.rowRevision ?? 0);
+  await expect(page.locator('[data-row="row-1"]')).toHaveClass(/ready/, {
+    timeout: 15000,
+  });
+  const highlighted = await page.evaluate(() =>
+    window.calcinkTestResults.at(-1),
+  );
+  expect(highlighted?.normalizedTranscript).toBe(
+    original?.normalizedTranscript,
+  );
+  expect(highlighted?.visibleInkBounds).toEqual(original?.visibleInkBounds);
+  expect(highlighted?.outcome).toEqual(original?.outcome);
+  await expect(page.getByTestId("save-status")).toHaveText(
+    "Saved on this device",
+  );
+  const displayed = await bitmap(page);
+  await page.reload();
+  await expect(page.getByTestId("offline-status")).toHaveText("Ready offline", {
+    timeout: 90000,
+  });
+  await expect(page.locator('[data-row="row-1"]')).toHaveClass(/ready/, {
+    timeout: 15000,
+  });
+  expect(await bitmap(page)).toBe(displayed);
+  const restored = await page.evaluate(() => window.calcinkTestResults.at(-1));
+  expect(restored?.normalizedTranscript).toBe("1=");
+  expect(restored?.outcome).toEqual({ kind: "answer", value: "1" });
+  expect(restored?.visibleInkBounds).toEqual(original?.visibleInkBounds);
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.screenshot({
+    path: testInfo.outputPath("pen-styles-desktop.png"),
+  });
+  await page.setViewportSize({ width: 390, height: 960 });
+  await expect(page.getByLabel("Pen style")).toBeVisible();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+  await page.screenshot({ path: testInfo.outputPath("pen-styles-mobile.png") });
+});
 async function removeWeight(page: Page, corrupt = false) {
   await page.evaluate(async (poison) => {
     const version = document.querySelector<HTMLMetaElement>(

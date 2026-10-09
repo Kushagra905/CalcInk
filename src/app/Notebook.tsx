@@ -1,11 +1,16 @@
 import { useEffect, useRef, useState } from "react";
 import { PAGE, ROWS, RULE_SPACING } from "../document/rows";
 import type { DocumentStore } from "../document/store";
-import type { EraseMask, InkOperation, Point } from "../document/types";
+import type {
+  EraseMask,
+  InkOperation,
+  PenStyle,
+  Point,
+} from "../document/types";
 import { hitVisibleStroke, type InkTool, maskTouchesInk } from "../ink/eraser";
 import { clientToPage, strokeBounds } from "../ink/geometry";
 import { groupBounds, writingGroup } from "../ink/groups";
-import { drawPath } from "../ink/replay";
+import { drawPath, strokeOpacity } from "../ink/replay";
 import type { RecognitionResponse } from "../recognition/protocol";
 import { replayRow } from "../rendering/replay";
 import { drawAnswer, measureAnswer, resultStatus } from "../rendering/results";
@@ -19,6 +24,8 @@ export interface RowFeedback {
 export function Notebook({
   document,
   width,
+  color,
+  penStyle,
   tool,
   eraserRadius,
   feedback,
@@ -31,6 +38,8 @@ export function Notebook({
 }: {
   document: DocumentStore;
   width: number;
+  color: string;
+  penStyle: PenStyle;
   tool: InkTool;
   eraserRadius: number;
   feedback: Record<string, RowFeedback>;
@@ -44,8 +53,24 @@ export function Notebook({
   const ink = useRef<HTMLCanvasElement>(null);
   const live = useRef<HTMLCanvasElement>(null);
   const results = useRef<HTMLCanvasElement>(null);
-  const settings = useRef({ width, tool, eraserRadius, pan, disabled });
-  settings.current = { width, tool, eraserRadius, pan, disabled };
+  const settings = useRef({
+    width,
+    color,
+    penStyle,
+    tool,
+    eraserRadius,
+    pan,
+    disabled,
+  });
+  settings.current = {
+    width,
+    color,
+    penStyle,
+    tool,
+    eraserRadius,
+    pan,
+    disabled,
+  };
   const [activeLine, setActiveLine] = useState<number | null>(null);
   const [fontReady, setFontReady] = useState(false);
   const currentFeedback = useRef(feedback);
@@ -120,6 +145,8 @@ export function Notebook({
       pointerId: number;
       rowId: string;
       width: number;
+      color: string;
+      style: PenStyle;
       points: Point[];
       painted: number;
       tool: InkTool;
@@ -153,6 +180,7 @@ export function Notebook({
       cancelAnimationFrame(frame);
       frame = 0;
       preview.clearRect(0, 0, PAGE.width, PAGE.height);
+      input.style.opacity = "1";
       stableContext.clearRect(0, 0, PAGE.width, PAGE.height);
     }
 
@@ -270,7 +298,7 @@ export function Notebook({
         preview.restore();
         return;
       }
-      stableContext.fillStyle = stableContext.strokeStyle = "#30352f";
+      stableContext.fillStyle = stableContext.strokeStyle = gesture.color;
       if (gesture.painted < gesture.points.length - 1) {
         drawPath(
           stableContext,
@@ -287,7 +315,7 @@ export function Notebook({
       preview.rect(0, 0, PAGE.width, PAGE.height);
       preview.clip();
       preview.drawImage(stable, 0, 0, PAGE.width, PAGE.height);
-      preview.fillStyle = preview.strokeStyle = "#30352f";
+      preview.fillStyle = preview.strokeStyle = gesture.color;
       drawPath(preview, gesture.points, gesture.width, gesture.painted);
       preview.restore();
     }
@@ -354,6 +382,8 @@ export function Notebook({
           pointerId: event.pointerId,
           rowId,
           width: selected.width,
+          color: selected.color,
+          style: selected.penStyle,
           points: [point(event)],
           painted: 1,
           tool: selected.tool,
@@ -365,6 +395,10 @@ export function Notebook({
         };
         if (selected.tool === "erase-pixel")
           stableContext.drawImage(layers[0], 0, 0, PAGE.width, PAGE.height);
+        // Apply opacity once to the entire live curve, avoiding dark seams at cached segments.
+        input.style.opacity = String(
+          selected.tool === "draw" ? strokeOpacity(selected.penStyle) : 1,
+        );
         input.setPointerCapture(event.pointerId);
         frame = requestAnimationFrame(paintLive);
       } catch (error) {
@@ -446,6 +480,8 @@ export function Notebook({
                 id: crypto.randomUUID(),
                 rowId: finished.rowId,
                 width: finished.width,
+                color: finished.color,
+                style: finished.style,
                 points: finished.points,
                 bounds: strokeBounds(
                   finished.points,

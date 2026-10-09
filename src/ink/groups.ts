@@ -1,10 +1,9 @@
 import { PAGE, ROW_HEIGHT } from "../document/rows";
 import type { Bounds, Point, RowSnapshot } from "../document/types";
+import { isWritingStroke } from "./replay";
 
 export function groupBounds(row: RowSnapshot): Bounds | null {
-  const strokes = row.operations.filter(
-    (operation) => operation.kind === "stroke",
-  );
+  const strokes = row.operations.filter(isWritingStroke);
   if (!strokes.length) return null;
   const left = Math.min(...strokes.map(({ stroke }) => stroke.bounds.x));
   const top = Math.min(...strokes.map(({ stroke }) => stroke.bounds.y));

@@ -1,6 +1,6 @@
 import { getRowConfig, PAGE } from "../document/rows";
 import type { Bounds, InkOperation, RowId } from "../document/types";
-import { replayInk } from "../ink/replay";
+import { isWritingStroke, replayInk } from "../ink/replay";
 
 export function rowTop(rowId: RowId): number {
   try {
@@ -43,7 +43,7 @@ export function rasterizeRow(
   let top = PAGE.height;
   let bottom = 0;
   for (const operation of operations) {
-    if (operation.kind !== "stroke") continue;
+    if (!isWritingStroke(operation)) continue;
     const { points, width } = operation.stroke;
     for (const point of points) {
       top = Math.min(top, point.y - width / 2 - 1);
@@ -68,7 +68,7 @@ export function rasterizeRow(
       throw new Error("MIXED_ROW_OPERATIONS");
     }
     context.translate(0, -top);
-    replayInk(context, operations);
+    replayInk(context, operations, undefined, "recognition");
     const local = alphaBounds(
       context.getImageData(0, 0, PAGE.width, writingHeight).data,
       PAGE.width,

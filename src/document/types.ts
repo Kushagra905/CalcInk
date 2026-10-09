@@ -1,4 +1,5 @@
 export type RowId = string;
+export type PenStyle = "pen" | "pencil" | "highlighter";
 
 export interface Bounds {
   readonly x: number;
@@ -18,6 +19,8 @@ export interface Stroke {
   readonly id: string;
   readonly rowId: RowId;
   readonly width: number;
+  readonly color?: string;
+  readonly style?: PenStyle;
   readonly points: readonly Point[];
   readonly bounds: Bounds;
 }

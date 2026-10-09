@@ -50,6 +50,13 @@ function freezeOperation(operation: InkOperation, rowId: string): InkOperation {
     }),
   );
   if (operation.kind === "stroke") {
+    const { color, style } = operation.stroke;
+    if (
+      (color !== undefined &&
+        (typeof color !== "string" || !/^#[0-9a-f]{6}$/i.test(color))) ||
+      (style !== undefined && !["pen", "pencil", "highlighter"].includes(style))
+    )
+      throw new RangeError("Invalid stroke appearance");
     const bounds = operation.stroke.bounds;
     if (
       ![bounds.x, bounds.y, bounds.width, bounds.height].every(

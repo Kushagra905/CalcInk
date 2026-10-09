@@ -1,5 +1,6 @@
 import type { DocumentStore } from "../document/store";
 import type { RowSnapshot } from "../document/types";
+import { isWritingStroke } from "../ink/replay";
 import type { ModelCandidate } from "./candidates";
 import type { CoordinatorCallbacks, RecognitionCoordinator } from "./contracts";
 import type { ModelManifest, RecognitionResponse } from "./protocol";
@@ -50,9 +51,9 @@ export function createCoordinator(
   }, options.createWorker);
 
   function hasInk(row: RowSnapshot): boolean {
-    // Skip structurally empty rows here. Adapters composite masked ink in the
+    // Skip empty and annotation-only rows. Adapters composite masked ink in the
     // worker and return an empty result before inference when no pixels survive.
-    return row.operations.some((operation) => operation.kind === "stroke");
+    return row.operations.some(isWritingStroke);
   }
 
   function current(row: RowSnapshot, requestEpoch: number): boolean {

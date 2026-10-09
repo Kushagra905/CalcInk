@@ -199,6 +199,12 @@ test("measure 60 seconds of drawing during real inference and 200 edit/clear cyc
     timeout: 90_000,
   });
   await expect(page.locator(".mock-notice")).toHaveCount(0);
+  // Keep both measured writing groups in view regardless of toolbar height.
+  await page
+    .locator('[data-layer="live"]')
+    .evaluate((canvas) =>
+      window.scrollBy(0, canvas.getBoundingClientRect().top),
+    );
   await one(page);
   await expect(page.locator('[data-row="row-1"]')).toHaveClass(/ready/);
   await page.evaluate(() => {

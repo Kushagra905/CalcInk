@@ -1,5 +1,6 @@
 import { expect, type Page, test } from "@playwright/test";
 import { PAGE, ROWS } from "../../src/document/rows";
+import type { InkOperation } from "../../src/document/types";
 
 async function ready(page: Page) {
   await page.goto("/");
@@ -50,6 +51,216 @@ async function centerPageAt(page: Page, y: number) {
     );
   }, y);
 }
+
+async function colour(page: Page, value: string) {
+  await page
+    .getByLabel("Pen colour")
+    .evaluate((input: HTMLInputElement, color) => {
+      Object.getOwnPropertyDescriptor(
+        HTMLInputElement.prototype,
+        "value",
+      )?.set?.call(input, color);
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    }, value);
+  await expect(page.getByLabel("Pen colour")).toHaveValue(value);
+}
+
+test("coloured writing tools preserve rendered appearance, history, saving and PNG export", async ({
+  page,
+}) => {
+  await ready(page);
+  await page.getByLabel("Pen style").selectOption("highlighter");
+  await dot(page);
+  await expect(page.getByTestId("save-status")).toHaveText(
+    "Saved on this device",
+  );
+  await expect(page.locator(".row-feedback.ready")).toHaveCount(0);
+  await page.getByLabel("Pen style").selectOption("pencil");
+  await colour(page, "#c2343d");
+  await page.getByRole("slider", { name: "Width", exact: true }).fill("5");
+  await page.locator(".row-guide").first().scrollIntoViewIfNeeded();
+  const pencil = await pagePoint(page, 180, 60);
+  await page.mouse.click(pencil.x, pencil.y);
+  await page.getByLabel("Pen style").selectOption("pen");
+  await colour(page, "#2155cd");
+  await page.locator(".row-guide").first().scrollIntoViewIfNeeded();
+  const pen = await pagePoint(page, 100, 60);
+  await page.mouse.click(pen.x, pen.y);
+  const saved = await backup(page);
+  const operations: InkOperation[] = saved.pages[0].rows[0].operations;
+  expect(
+    operations.map(
+      (op) =>
+        op.kind === "stroke" && [
+          op.stroke.style,
+          op.stroke.color,
+          op.stroke.width,
+        ],
+    ),
+  ).toEqual([
+    ["highlighter", "#f2c94c", 24],
+    ["pencil", "#c2343d", 5],
+    ["pen", "#2155cd", 3],
+  ]);
+  const pixels = await page
+    .locator('[data-layer="ink"]')
+    .evaluate((canvas: HTMLCanvasElement) => {
+      const ctx = canvas.getContext("2d");
+      if (!ctx) throw new Error("Missing ink context");
+      return [100, 180, 240].map((x) =>
+        Array.from(
+          ctx.getImageData(
+            Math.round((x / 960) * canvas.width),
+            Math.round((60 / 1280) * canvas.height),
+            1,
+            1,
+          ).data,
+        ),
+      );
+    });
+  expect(pixels[0]).toEqual([33, 85, 205, 255]);
+  expect(pixels[1][3]).toBeCloseTo(0.58 * 255, 0);
+  expect(pixels[2][3]).toBeCloseTo(0.28 * 255, 0);
+  await page.getByRole("button", { name: "Undo", exact: true }).click();
+  expect((await backup(page)).pages[0].rows[0].operations).toHaveLength(2);
+  await page.getByRole("button", { name: "Redo", exact: true }).click();
+  expect((await backup(page)).pages[0].rows[0].operations).toEqual(operations);
+  await page.getByLabel("Pen style").selectOption("pencil");
+  await expect(page.getByLabel("Pen colour")).toHaveValue("#c2343d");
+  await expect(
+    page.getByRole("slider", { name: "Width", exact: true }),
+  ).toHaveValue("5");
+  await expect(page.getByTestId("save-status")).toHaveText(
+    "Saved on this device",
+  );
+  await page.reload();
+  await expect(page.getByTestId("save-status")).toHaveText(
+    "Saved on this device",
+  );
+  expect((await backup(page)).pages[0].rows[0].operations).toEqual(operations);
+  await page.getByLabel("Export and help").click();
+  const pending = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Export page PNG" }).click();
+  const stream = await (await pending).createReadStream();
+  if (!stream) throw new Error("Missing PNG");
+  const chunks: Buffer[] = [];
+  for await (const chunk of stream) chunks.push(Buffer.from(chunk));
+  const exported = await page.evaluate(async (base64) => {
+    const image = new Image();
+    image.src = `data:image/png;base64,${base64}`;
+    await image.decode();
+    const canvas = document.createElement("canvas");
+    canvas.width = image.width;
+    canvas.height = image.height;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Missing export context");
+    ctx.drawImage(image, 0, 0);
+    return [100, 180, 240].map((x) =>
+      Array.from(ctx.getImageData(x + 32, 180, 1, 1).data),
+    );
+  }, Buffer.concat(chunks).toString("base64"));
+  expect(exported[0]).toEqual([33, 85, 205, 255]);
+  for (let i = 1; i < 3; i++) {
+    const paper = [255, 254, 248];
+    for (let channel = 0; channel < 3; channel++) {
+      const alpha = pixels[i][3] / 255;
+      expect(
+        Math.abs(
+          exported[i][channel] -
+            (pixels[i][channel] * alpha + paper[channel] * (1 - alpha)),
+        ),
+      ).toBeLessThanOrEqual(2);
+    }
+  }
+});
+
+test("recognition normalizes coloured pencil ink and ignores highlighting while retaining erase order", async ({
+  page,
+}) => {
+  await ready(page);
+  const result = await page.evaluate(async () => {
+    const { rasterizeRow, prepareComer } = (await import(
+      `${location.origin}/src/recognition/rasterize.ts`
+    )) as typeof import("../../src/recognition/rasterize");
+    const { replayInk } = (await import(
+      `${location.origin}/src/ink/replay.ts`
+    )) as typeof import("../../src/ink/replay");
+    const base: InkOperation = {
+      kind: "stroke",
+      stroke: {
+        id: "engineering-input",
+        rowId: "row-1",
+        width: 3,
+        points: [
+          { x: 100, y: 60, pressure: 0.5, t: 1 },
+          { x: 150, y: 60, pressure: 0.5, t: 2 },
+        ],
+        bounds: { x: 98.5, y: 58.5, width: 53, height: 3 },
+      },
+    };
+    const pencil: InkOperation = {
+      kind: "stroke",
+      stroke: { ...base.stroke, style: "pencil", color: "#c2343d" },
+    };
+    const highlighted: InkOperation = {
+      kind: "stroke",
+      stroke: {
+        ...base.stroke,
+        id: "annotation",
+        style: "highlighter",
+        color: "#f2c94c",
+        width: 24,
+      },
+    };
+    const mask: InkOperation = {
+      kind: "pixel-mask",
+      mask: {
+        id: "eraser",
+        rowId: "row-1",
+        radius: 40,
+        points: [{ x: 125, y: 60, pressure: 0.5, t: 3 }],
+      },
+    };
+    function tensor(operations: InkOperation[]) {
+      const { canvas, visibleInkBounds } = rasterizeRow(operations, "row-1");
+      if (!canvas) return null;
+      const input = prepareComer(canvas);
+      canvas.width = canvas.height = 0;
+      return { input, visibleInkBounds };
+    }
+    const original = tensor([base]);
+    const styled = tensor([pencil, highlighted]);
+    if (!original || !styled) throw new Error("Missing writing raster");
+    const display = new OffscreenCanvas(960, 136);
+    const ctx = display.getContext("2d");
+    if (!ctx) throw new Error("Missing display context");
+    replayInk(ctx, [pencil, mask, highlighted]);
+    return {
+      sameTensor: original.input.tensor.every(
+        (value, index) => value === styled.input.tensor[index],
+      ),
+      sameMask: original.input.mask.every(
+        (value, index) => value === styled.input.mask[index],
+      ),
+      sameBounds:
+        JSON.stringify(original.visibleInkBounds) ===
+        JSON.stringify(styled.visibleInkBounds),
+      annotationOnly: tensor([highlighted]),
+      erasedWriting: tensor([pencil, mask, highlighted]),
+      laterWritingSurvives: tensor([pencil, mask, base]) !== null,
+      annotationAlpha: ctx.getImageData(125, 60, 1, 1).data[3],
+    };
+  });
+  expect(result).toMatchObject({
+    sameTensor: true,
+    sameMask: true,
+    sameBounds: true,
+    annotationOnly: null,
+    erasedWriting: null,
+    laterWritingSurvives: true,
+  });
+  expect(result.annotationAlpha).toBeCloseTo(0.28 * 255, 0);
+});
 
 test("one continuous page preserves boundary-crossing strokes and ink in former gaps through saving and zoom", async ({
   page,
@@ -137,6 +348,7 @@ test("a page-wide pixel sweep undoes once and its older mask cannot remove anoth
     );
   await page.getByRole("button", { name: "Redo", exact: true }).click();
   await page.getByRole("button", { name: "Pen", exact: true }).click();
+  await centerPageAt(page, 110);
   const ink = await pagePoint(page, 200, 110);
   await page.mouse.click(ink.x, ink.y);
   expect(

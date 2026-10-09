@@ -23,6 +23,10 @@ export function parseFixtures(value: unknown): FixtureBundle {
       if (!geometry || typeof geometry.id !== "string" || geometry.rowId !== "row-1" || !Array.isArray(geometry.points) || !geometry.points.length) throw new Error("INVALID_GEOMETRY");
       const width = operation.kind === "stroke" ? operation.stroke.width : operation.mask.radius;
       if (!Number.isFinite(width) || width <= 0 || width > 50) throw new Error("INVALID_WIDTH");
+      if (operation.kind === "stroke") {
+        const { color, style } = operation.stroke;
+        if ((color !== undefined && (typeof color !== "string" || !/^#[0-9a-f]{6}$/i.test(color))) || (style !== undefined && !["pen", "pencil", "highlighter"].includes(style))) throw new Error("INVALID_APPEARANCE");
+      }
       for (const point of geometry.points) {
         pointCount++;
         if (pointCount > 200_000 || ![point.x, point.y, point.pressure, point.t].every(Number.isFinite) || point.x < 0 || point.x > 960 || point.y < 0 || point.y > 136 || point.pressure < 0 || point.pressure > 1) throw new Error("INVALID_POINT");

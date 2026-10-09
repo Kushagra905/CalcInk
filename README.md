@@ -11,7 +11,7 @@ recognize it and calculate an inline answer.
 Built for the Inter IIT Software Development Bootcamp with React, TypeScript,
 Vite, Canvas 2D, ONNX Runtime Web and decimal.js.
 
-- Continuous ruled pages with pen, whole-stroke erasing and pixel erasing.
+- Continuous ruled pages with coloured pen, pencil and highlighter tools, whole-stroke erasing and pixel erasing.
 - Inline arithmetic with precedence, decimals, unary signs, powers and undefined-result feedback.
 - Up to 12 named pages, independent undo/redo, zoom, pan and focus mode.
 - Local autosave, PNG export and whole-notebook JSON backup/restore.
@@ -82,7 +82,7 @@ result display **Undefined**.
 
 | Control | Action |
 |---|---|
-| **Pen / Width** | Draw; width changes apply to future strokes. |
+| **Style / Colour / Width** | Choose pen, soft pencil or translucent highlighter, then set its colour and width. Each style keeps separate settings during this tab session; changes apply to future strokes. Highlighter marks are annotations and are excluded from calculations. |
 | **Stroke eraser** | Remove whole visible strokes touched by the eraser. |
 | **Pixel eraser / Eraser size** | Erase only the swept area; size is the brush diameter. |
 | **Undo / Redo / Clear** | Edit the active page. Clear is undoable; each page keeps its own session history. |
@@ -98,7 +98,8 @@ Keyboard shortcuts outside text fields: **Ctrl/Cmd+Z** for Undo,
 
 Completed edits and page titles save in this browser when the header says
 **Saved on this device**. Reload restores saved ink and recomputes answers;
-undo history starts fresh. Storage belongs to the browser profile and origin,
+undo history starts fresh. Stroke colours and styles also survive reload,
+notebook backups and PNG export. Storage belongs to the browser profile and origin,
 including its port. Download a JSON backup before clearing browser data or
 moving devices. A second tab, or a browser without storage locking, uses
 **Session only** editing; export that work to keep it.

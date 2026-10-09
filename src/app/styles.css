@@ -395,21 +395,32 @@ fieldset.tool-group {
   min-width: 16px;
   color: var(--ink);
 }
-.zoom-control {
+.zoom-control,
+.pen-style,
+.pen-color {
   display: flex;
   gap: 8px;
   align-items: center;
   font-size: 11px;
   color: var(--muted);
+}
+.zoom-control {
   margin-left: auto;
 }
-.zoom-control select {
+.zoom-control select,
+.pen-style select,
+.pen-color input {
   min-height: 44px;
   border: 1px solid #30352f55;
   border-radius: 12px;
   padding: 7px;
   background: var(--paper);
   color: var(--ink);
+}
+.pen-color input {
+  width: 44px;
+  padding: 4px;
+  cursor: pointer;
 }
 .sheet-viewport {
   overflow-x: auto;

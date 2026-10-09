@@ -53,16 +53,12 @@ async function centerPageAt(page: Page, y: number) {
 }
 
 async function colour(page: Page, value: string) {
-  await page
-    .getByLabel("Pen colour")
-    .evaluate((input: HTMLInputElement, color) => {
-      Object.getOwnPropertyDescriptor(
-        HTMLInputElement.prototype,
-        "value",
-      )?.set?.call(input, color);
-      input.dispatchEvent(new Event("input", { bubbles: true }));
-    }, value);
-  await expect(page.getByLabel("Pen colour")).toHaveValue(value);
+  await page.getByLabel("Choose pen colour").click();
+  await page.getByLabel("Pen colour", { exact: true }).fill(value);
+  await expect(page.getByLabel("Pen colour", { exact: true })).toHaveValue(
+    value,
+  );
+  await page.keyboard.press("Escape");
 }
 
 test("coloured writing tools preserve rendered appearance, history, saving and PNG export", async ({
@@ -126,7 +122,9 @@ test("coloured writing tools preserve rendered appearance, history, saving and P
   await page.getByRole("button", { name: "Redo", exact: true }).click();
   expect((await backup(page)).pages[0].rows[0].operations).toEqual(operations);
   await page.getByLabel("Pen style").selectOption("pencil");
-  await expect(page.getByLabel("Pen colour")).toHaveValue("#c2343d");
+  await expect(page.getByLabel("Pen colour", { exact: true })).toHaveValue(
+    "#c2343d",
+  );
   await expect(
     page.getByRole("slider", { name: "Width", exact: true }),
   ).toHaveValue("5");

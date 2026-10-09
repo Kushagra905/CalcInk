@@ -7,6 +7,7 @@ import {
   type SaveState,
 } from "../document/persistence";
 import { GROUPS } from "../document/rows";
+import { createDocumentStore } from "../document/store";
 import type { PenStyle } from "../document/types";
 import type { InkTool } from "../ink/eraser";
 import { connectOffline, type OfflineState } from "../offline/client";
@@ -15,7 +16,9 @@ import type {
   ModelState,
   RecognitionCoordinator,
 } from "../recognition/contracts";
+import { ColourPicker } from "./ColourPicker";
 import { downloadBlob, exportPagePng } from "./export";
+import { GraphWorkspace } from "./GraphWorkspace";
 import { Icon } from "./Icon";
 import { Notebook, type RowFeedback } from "./Notebook";
 
@@ -28,7 +31,14 @@ function emptyFeedback(): Record<string, RowFeedback> {
 }
 export function App() {
   const [collection] = useState(createNotebookCollection);
-  const document = collection.document;
+  const [graphDocument] = useState(createDocumentStore);
+  const [workspace, setWorkspace] = useState<"notebook" | "graph">("notebook");
+  const [graphEquation, setGraphEquation] = useState("");
+  const graphManualRevision = useRef<number | null>(null);
+  const graphRecognizedRevision = useRef<number | null>(null);
+  const graphText = useRef(graphEquation);
+  graphText.current = graphEquation;
+  const document = workspace === "graph" ? graphDocument : collection.document;
   const [pages, setPages] = useState(collection.getInfo);
   const [saving, setSaving] = useState<SaveState>({
     kind: "loading",
@@ -69,17 +79,21 @@ export function App() {
     (page) => page.id === pages.activePageId,
   );
   const activePage = pages.pages[pageIndex];
-  const opening = saving.kind === "loading";
-  const hasNavigation = navigation && !focus;
+  const opening = workspace === "notebook" && saving.kind === "loading";
+  const hasNavigation = workspace === "notebook" && navigation && !focus;
 
-  useEffect(
-    () =>
-      collection.subscribe(() => {
-        setPages(collection.getInfo());
-        setHistory(document.getHistoryState());
-      }),
-    [collection, document],
-  );
+  useEffect(() => {
+    const updateHistory = () => setHistory(document.getHistoryState());
+    updateHistory();
+    const unsubscribePages = collection.subscribe(() =>
+      setPages(collection.getInfo()),
+    );
+    const unsubscribeDocument = document.subscribe(updateHistory);
+    return () => {
+      unsubscribePages();
+      unsubscribeDocument();
+    };
+  }, [collection, document]);
   useEffect(() => {
     const connection = connectNotebookStorage(
       collection,
@@ -97,14 +111,17 @@ export function App() {
     const connection = connectOffline(
       setOffline,
       () => setUpdateAvailable(true),
-      () => !collection.hasInk(),
+      () =>
+        !collection.hasInk() &&
+        !graphDocument.getHistoryState().canClear &&
+        !graphText.current,
     );
     offlineConnection.current = connection;
     return () => {
       offlineConnection.current = null;
       connection.dispose();
     };
-  }, [collection]);
+  }, [collection, graphDocument]);
   useEffect(() => {
     function shortcut(event: KeyboardEvent) {
       if (
@@ -137,32 +154,65 @@ export function App() {
     function update(rowId: string, state: RowFeedback) {
       setFeedback((previous) => ({ ...previous, [rowId]: state }));
     }
-    const connection = connectRecognition(document, {
-      onModelState: (state) => {
-        setModel(state);
-        if (state.kind !== "ready") setFeedback(emptyFeedback());
+    const connection = connectRecognition(
+      document,
+      {
+        onModelState: (state) => {
+          setModel(state);
+          if (state.kind !== "ready") setFeedback(emptyFeedback());
+        },
+        onClear: (rowId) => {
+          if (workspace === "graph" && rowId === "row-1") {
+            const revision = document.getRow(rowId).rowRevision;
+            if (
+              revision !== graphManualRevision.current &&
+              revision !== graphRecognizedRevision.current
+            )
+              setGraphEquation("");
+          }
+          update(rowId, { kind: "idle", transcript: "" });
+        },
+        onRecognizing: (rowId) =>
+          update(rowId, { kind: "recognizing", transcript: "" }),
+        onResult: (result) => {
+          if (
+            workspace === "graph" &&
+            graphManualRevision.current !== result.rowRevision
+          ) {
+            graphRecognizedRevision.current = result.rowRevision;
+            if (
+              result.outcome.kind === "unrecognized" &&
+              result.outcome.code === "OUTPUT_LIMIT"
+            ) {
+              setGraphEquation("");
+              setError(
+                "The handwriting result was cut short. Rewrite a shorter equation or type it below.",
+              );
+            } else
+              setGraphEquation(
+                result.visibleInkBounds ? result.transcript : "",
+              );
+          }
+          update(result.rowId, {
+            kind: "ready",
+            transcript: result.transcript,
+            result,
+          });
+        },
+        onRowError: (rowId, code) =>
+          update(rowId, {
+            kind: "error",
+            transcript: `${code}. Retry recognition.`,
+          }),
       },
-      onClear: (rowId) => update(rowId, { kind: "idle", transcript: "" }),
-      onRecognizing: (rowId) =>
-        update(rowId, { kind: "recognizing", transcript: "" }),
-      onResult: (result) =>
-        update(result.rowId, {
-          kind: "ready",
-          transcript: result.transcript,
-          result,
-        }),
-      onRowError: (rowId, code) =>
-        update(rowId, {
-          kind: "error",
-          transcript: `${code}. Retry recognition.`,
-        }),
-    });
+      { mode: workspace === "graph" ? "expression" : "number" },
+    );
     coordinator.current = connection;
     return () => {
       coordinator.current = null;
       connection.dispose();
     };
-  }, [document, heldOutCapture]);
+  }, [document, heldOutCapture, workspace]);
   const failed =
     !heldOutCapture &&
     (model.kind === "error" ||
@@ -237,14 +287,38 @@ export function App() {
           </a>
           <span className="brand-caption">a little room to think</span>
         </div>
+        <nav className="workspace-navigation" aria-label="Workspaces">
+          {(
+            [
+              ["notebook", "Notebook"],
+              ["graph", "Graph"],
+            ] as const
+          ).map(([value, label]) => (
+            <button
+              type="button"
+              key={value}
+              className={`button${workspace === value ? " selected" : ""}`}
+              aria-pressed={workspace === value}
+              disabled={heldOutCapture}
+              onClick={() => {
+                document.cancel();
+                setWorkspace(value);
+                setPan(false);
+                setError("");
+              }}
+            >
+              {label}
+            </button>
+          ))}
+        </nav>
         <div className="header-actions">
           <span
-            className={`save-status ${saving.kind}`}
+            className={`save-status ${workspace === "graph" ? "session" : saving.kind}`}
             role="status"
             data-testid="save-status"
           >
             <span className="status-dot" />
-            {saving.message}
+            {workspace === "graph" ? "Graph · this tab only" : saving.message}
           </span>
           <button
             type="button"
@@ -252,6 +326,7 @@ export function App() {
             aria-label="Toggle page navigation"
             aria-controls="notebook-navigation"
             aria-expanded={hasNavigation}
+            disabled={workspace === "graph"}
             onClick={() => {
               setFocus(false);
               setNavigation(!hasNavigation);
@@ -280,7 +355,7 @@ export function App() {
                 onClick={() => {
                   void exportImage();
                 }}
-                disabled={opening}
+                disabled={opening || workspace === "graph"}
               >
                 <Icon name="download" />
                 Export page PNG
@@ -289,14 +364,14 @@ export function App() {
                 type="button"
                 className="button"
                 onClick={backup}
-                disabled={opening || heldOutCapture}
+                disabled={saving.kind === "loading" || heldOutCapture}
               >
                 Download notebook backup
               </button>
               <button
                 type="button"
                 className="button"
-                disabled={opening || heldOutCapture}
+                disabled={saving.kind === "loading" || heldOutCapture}
                 onClick={() => importFile.current?.click()}
               >
                 Restore notebook backup
@@ -325,6 +400,7 @@ export function App() {
           </details>
         </div>
       </header>
+
       <div
         className={`notebook-layout${hasNavigation ? " with-navigation" : ""}`}
       >
@@ -387,7 +463,11 @@ export function App() {
           <div className="writing-heading">
             <div>
               <p className="eyebrow">MAKE YOURSELF SOME SPACE</p>
-              <h1>Write it. Work it out.</h1>
+              <h1>
+                {workspace === "graph"
+                  ? "Write it. See its shape."
+                  : "Write it. Work it out."}
+              </h1>
             </div>
             <span className={`model-badge ${model.kind}`}>
               <span className="status-dot" />
@@ -395,8 +475,9 @@ export function App() {
             </span>
           </div>
           <p id="writing-help" className="writing-help">
-            Write anywhere on the page. Finish a calculation with = and leave
-            room for its answer.
+            {workspace === "graph"
+              ? "Explore equations in x and y. Write above, then move and zoom the graph below."
+              : "Write anywhere on the page. Finish a calculation with = and leave room for its answer."}
           </p>
           {MOCK_MODE && (
             <p className="mock-notice">
@@ -466,24 +547,18 @@ export function App() {
                 <option value="highlighter">Highlighter</option>
               </select>
             </label>
-            <label className="pen-color">
-              Colour
-              <input
-                type="color"
-                aria-label="Pen colour"
-                value={color}
-                disabled={opening}
-                onChange={(event) => {
-                  const color = event.target.value;
-                  setBrushes((current) => ({
-                    ...current,
-                    [penStyle]: { ...current[penStyle], color },
-                  }));
-                  setTool("draw");
-                  setPan(false);
-                }}
-              />
-            </label>
+            <ColourPicker
+              color={color}
+              disabled={opening}
+              onChange={(color) => {
+                setBrushes((current) => ({
+                  ...current,
+                  [penStyle]: { ...current[penStyle], color },
+                }));
+                setTool("draw");
+                setPan(false);
+              }}
+            />
             <label className="pen-width">
               {tool === "draw" ? "Width" : "Eraser size"}
               <input
@@ -513,7 +588,19 @@ export function App() {
                 [
                   ["Undo", "undo", history.canUndo, () => document.undo()],
                   ["Redo", "redo", history.canRedo, () => document.redo()],
-                  ["Clear", "clear", history.canClear, () => document.clear()],
+                  [
+                    "Clear",
+                    "clear",
+                    history.canClear ||
+                      (workspace === "graph" && !!graphEquation),
+                    () => {
+                      document.clear();
+                      if (workspace === "graph") {
+                        setGraphEquation("");
+                        graphManualRevision.current = null;
+                      }
+                    },
+                  ],
                 ] as const
               ).map(([label, icon, enabled, action]) => (
                 <button
@@ -524,7 +611,9 @@ export function App() {
                   onClick={action}
                   title={
                     label === "Clear"
-                      ? "Clear this page (undoable)"
+                      ? workspace === "graph"
+                        ? "Clear graph ink and equation"
+                        : "Clear this page (undoable)"
                       : `${label} the last edit`
                   }
                 >
@@ -533,80 +622,104 @@ export function App() {
                 </button>
               ))}
             </fieldset>
-            <label className="zoom-control">
-              Zoom
-              <select
-                value={zoom}
-                onChange={(event) => setZoom(Number(event.target.value))}
-                aria-label="Page zoom"
-              >
-                <option value="100">100%</option>
-                <option value="125">125%</option>
-                <option value="150">150%</option>
-              </select>
-            </label>
+            {workspace === "notebook" && (
+              <label className="zoom-control">
+                Zoom
+                <select
+                  value={zoom}
+                  onChange={(event) => setZoom(Number(event.target.value))}
+                  aria-label="Page zoom"
+                >
+                  <option value="100">100%</option>
+                  <option value="125">125%</option>
+                  <option value="150">150%</option>
+                </select>
+              </label>
+            )}
           </section>
-          {MOCK_MODE && (
+          {MOCK_MODE && workspace === "notebook" && (
             <p className="capture-writing-prompt">{capturePrompt}</p>
           )}
-          <section
-            className="sheet-viewport"
-            aria-label="Scrollable notebook page"
-          >
-            <div className="sheet-size" style={{ width: `${zoom}%` }}>
-              <Notebook
-                document={document}
-                width={width}
-                color={color}
-                penStyle={penStyle}
-                tool={tool}
-                eraserRadius={eraserSize / 2}
-                feedback={feedback}
-                onError={setError}
-                title={activePage.title}
-                onTitleChange={(value) => collection.rename(value)}
-                pageNumber={pageIndex + 1}
-                pan={pan}
-                disabled={opening}
-              />
-            </div>
-          </section>
-          <div className="page-footer">
-            <span>
-              {pan
-                ? "Move mode · scroll the page without drawing"
-                : tool === "draw" && penStyle === "highlighter"
-                  ? "Highlighter · annotations are excluded from calculations"
-                  : "Made for your handwriting"}
-            </span>
-            <div className="page-pagination">
-              <button
-                type="button"
-                className="button"
-                aria-label="Previous page"
-                disabled={opening || heldOutCapture || pageIndex === 0}
-                onClick={() => choosePage(pages.pages[pageIndex - 1].id)}
+          {workspace === "graph" ? (
+            <GraphWorkspace
+              document={graphDocument}
+              equation={graphEquation}
+              onEquationChange={(value) => {
+                graphManualRevision.current =
+                  graphDocument.getRow("row-1").rowRevision;
+                setGraphEquation(value);
+              }}
+              width={width}
+              color={color}
+              penStyle={penStyle}
+              tool={tool}
+              eraserRadius={eraserSize / 2}
+              pan={pan}
+              onError={setError}
+              feedback={feedback}
+            />
+          ) : (
+            <>
+              <section
+                className="sheet-viewport"
+                aria-label="Scrollable notebook page"
               >
-                ←
-              </button>
-              <span>
-                {pageIndex + 1} / {pages.pages.length}
-              </span>
-              <button
-                type="button"
-                className="button"
-                aria-label="Next page"
-                disabled={
-                  opening ||
-                  heldOutCapture ||
-                  pageIndex === pages.pages.length - 1
-                }
-                onClick={() => choosePage(pages.pages[pageIndex + 1].id)}
-              >
-                →
-              </button>
-            </div>
-          </div>
+                <div className="sheet-size" style={{ width: `${zoom}%` }}>
+                  <Notebook
+                    document={document}
+                    width={width}
+                    color={color}
+                    penStyle={penStyle}
+                    tool={tool}
+                    eraserRadius={eraserSize / 2}
+                    feedback={feedback}
+                    onError={setError}
+                    title={activePage.title}
+                    onTitleChange={(value) => collection.rename(value)}
+                    pageNumber={pageIndex + 1}
+                    pan={pan}
+                    disabled={opening}
+                  />
+                </div>
+              </section>
+              <div className="page-footer">
+                <span>
+                  {pan
+                    ? "Move mode · scroll the page without drawing"
+                    : tool === "draw" && penStyle === "highlighter"
+                      ? "Highlighter · annotations are excluded from calculations"
+                      : "Made for your handwriting"}
+                </span>
+                <div className="page-pagination">
+                  <button
+                    type="button"
+                    className="button"
+                    aria-label="Previous page"
+                    disabled={opening || heldOutCapture || pageIndex === 0}
+                    onClick={() => choosePage(pages.pages[pageIndex - 1].id)}
+                  >
+                    ←
+                  </button>
+                  <span>
+                    {pageIndex + 1} / {pages.pages.length}
+                  </span>
+                  <button
+                    type="button"
+                    className="button"
+                    aria-label="Next page"
+                    disabled={
+                      opening ||
+                      heldOutCapture ||
+                      pageIndex === pages.pages.length - 1
+                    }
+                    onClick={() => choosePage(pages.pages[pageIndex + 1].id)}
+                  >
+                    →
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
           {saving.kind === "error" && (
             <p className="input-error" role="alert">
               {saving.message}
@@ -718,7 +831,11 @@ export function App() {
                     <button
                       type="button"
                       className="button"
-                      disabled={collection.hasInk()}
+                      disabled={
+                        collection.hasInk() ||
+                        graphDocument.getHistoryState().canClear ||
+                        !!graphEquation
+                      }
                       onClick={() => offlineConnection.current?.update()}
                     >
                       Reload to update
@@ -736,7 +853,7 @@ export function App() {
               </p>
             </>
           )}
-          {MOCK_MODE && (
+          {MOCK_MODE && workspace === "notebook" && (
             <>
               <a className="capture-link" href="#capture-title">
                 Return to sample controls ↓

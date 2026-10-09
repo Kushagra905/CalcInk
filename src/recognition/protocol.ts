@@ -33,6 +33,7 @@ export type CalculationOutcome =
 
 export interface RecognitionRequest extends RevisionKey {
   readonly operations: readonly InkOperation[];
+  readonly mode?: "number" | "expression";
 }
 
 export interface RecognitionResponse extends RevisionKey {

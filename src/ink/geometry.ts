@@ -5,12 +5,13 @@ export function clientToPage(
   clientX: number,
   clientY: number,
   rect: Pick<DOMRect, "left" | "top" | "width" | "height">,
+  pageHeight: number = PAGE.height,
 ) {
   if (rect.width <= 0 || rect.height <= 0)
     throw new RangeError("Canvas has no visible size");
   return {
     x: ((clientX - rect.left) * PAGE.width) / rect.width,
-    y: ((clientY - rect.top) * PAGE.height) / rect.height,
+    y: ((clientY - rect.top) * pageHeight) / rect.height,
   };
 }
 

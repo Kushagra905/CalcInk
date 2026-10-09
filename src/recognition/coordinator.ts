@@ -15,6 +15,7 @@ export function createCoordinator(
     baseUrl: string;
     createWorker?: () => WorkerPort;
     manifest?: ModelManifest;
+    mode?: "number" | "expression";
   },
 ): RecognitionCoordinator {
   let disposed = false;
@@ -98,7 +99,7 @@ export function createCoordinator(
     active = token;
     callbacks.onRecognizing(job.row.rowId);
     void client
-      .recognize({ ...job.row, epoch: job.epoch })
+      .recognize({ ...job.row, epoch: job.epoch, mode: options.mode })
       .then((result: RecognitionResponse) => {
         if (
           active === token &&

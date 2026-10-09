@@ -13,6 +13,7 @@ Vite, Canvas 2D, ONNX Runtime Web and decimal.js.
 
 - Continuous ruled pages with coloured pen, pencil and highlighter tools, whole-stroke erasing and pixel erasing.
 - Inline arithmetic with precedence, decimals, unary signs, powers and undefined-result feedback.
+- A separate Graph workspace with handwriting input, editable equations, explicit/implicit curves, and mouse/touch pan and zoom.
 - Up to 12 named pages, independent undo/redo, zoom, pan and focus mode.
 - Local autosave, PNG export and whole-notebook JSON backup/restore.
 - Offline use after the production app finishes preparing its verified files.
@@ -76,13 +77,13 @@ and `4²=` calculate `16`; consecutive `==` or `= =` count as one completion mar
 A transcript of `42` remains forty-two; the app does not guess a missing exponent.
 [Power implementation and regression](docs/power-fix.md).
 
-Fractions, variables, graphs and two-dimensional equation layouts are outside the
-current scope. Exact division by zero, `0^0`, and powers without a real-number
+Notebook arithmetic does not accept variables or stacked fraction layouts. Use the Graph
+workspace for equations in x and y. Exact division by zero, `0^0`, and powers without a real-number
 result display **Undefined**.
 
 | Control | Action |
 |---|---|
-| **Style / Colour / Width** | Choose pen, soft pencil or translucent highlighter, then set its colour and width. Each style keeps separate settings during this tab session; changes apply to future strokes. Highlighter marks are annotations and are excluded from calculations. |
+| **Style / Colour / Width** | Choose pen, soft pencil or translucent highlighter. The in-app colour palette offers swatches, a custom hex value, and hue/saturation/brightness sliders. Each style keeps separate settings during this tab session; changes apply to future strokes. Highlighter marks are annotations and are excluded from recognition. |
 | **Stroke eraser** | Remove whole visible strokes touched by the eraser. |
 | **Pixel eraser / Eraser size** | Erase only the swept area; size is the brush diameter. |
 | **Undo / Redo / Clear** | Edit the active page. Clear is undoable; each page keeps its own session history. |
@@ -93,6 +94,30 @@ result display **Undefined**.
 
 Keyboard shortcuts outside text fields: **Ctrl/Cmd+Z** for Undo,
 **Ctrl/Cmd+Shift+Z** or **Ctrl+Y** for Redo.
+
+### Using Graph
+
+Choose **Graph** in the header. Write one complete equation in the pad above the
+plot, then pause. Graph recognition uses the model's expression vocabulary for
+letters; the notebook keeps its number vocabulary. The recognized equation is
+editable, so you can correct an OCR mistake or type an equation directly.
+
+Try `y = x^2 + 2x`, `x = 3`, or `x^2 + y^2 = 9`. Supported notation includes x/y,
+numbers, arithmetic, powers, parentheses, implicit multiplication (`2x`), π/e,
+LaTeX fractions and exponent braces, and `sin`, `cos`, `tan`, `sqrt`, `abs`, `exp`,
+`ln`, and `log` with parenthesized arguments. Angles are in radians; `log` is base
+10. Other variables and inequalities are not supported.
+
+Drag to pan, scroll or pinch to zoom, or use the zoom buttons. With the plot
+focused, arrow keys pan, +/− zoom, and Home resets. Explicit functions are
+sampled along the visible axis; implicit curves are numerical contours at a
+five-pixel grid resolution. Small or degenerate curves can require a closer
+zoom. Graphing is a visual approximation, not a symbolic equation solver.
+
+Graph ink and the equation are separate from notebook pages and remain while
+switching workspaces. **Graph is session-only**: reloading or closing the tab
+discards it, and notebook backups/PNG exports cover notebook pages only.
+Handwriting accuracy for algebra has not yet been measured with genuine samples.
 
 ### Saving and offline use
 
